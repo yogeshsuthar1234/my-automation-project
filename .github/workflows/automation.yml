@@ -112,6 +112,15 @@ jobs:
             "
           fi
 
+      # Upload debug screenshots (OTP timeout screenshots etc.)
+      - name: 📸 Upload bootstrap screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bootstrap-screenshots-run-${{ github.run_number }}
+          path: Auto/screenshots/
+          retention-days: 7
+
       # Save accounts for Phase 2
       - name: 💾 Save accounts
         uses: actions/cache@v3

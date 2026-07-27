@@ -165,34 +165,50 @@ async function getOTPFrom1secemail(page, maxWait = 120000) {
     try {
       // Click Refresh to fetch latest emails
       await page.click('#refresh', { timeout: 5000 }).catch(() => {});
-      await sleep(4000); // Give page time to update
+      await sleep(5000); // Give AJAX time to load emails
 
-      // ── KEY FIX: Read page text DIRECTLY — OTP is in the subject line
-      // "415098 is your Instagram code" is visible WITHOUT clicking the row
-      const pageText = await page.evaluate(() => document.body.innerText || '');
+      // ── FIX: Inbox emails are AJAX-loaded and NOT in body.innerText
+      // Read each table cell directly using page.evaluate on specific elements
+      const tableData = await page.evaluate(() => {
+        // Try all possible inbox containers
+        const rows = Array.from(document.querySelectorAll('table tr, .email-item, [class*="inbox"] tr, [id*="inbox"] tr'));
+        return rows.map(row => row.innerText || row.textContent || '').join('\n');
+      });
 
-      // Log what we see (first 200 chars) for debugging
-      log('🔍', `Inbox text: ${pageText.slice(0, 200).replace(/\n/g, ' ')}`);
+      // Also grab the full body text as backup
+      const bodyText = await page.evaluate(() => document.body.innerText || '');
 
-      // Try specific Instagram subject pattern first (most reliable)
-      let match = pageText.match(/(\d{6})\s+is\s+your\s+Instagram\s+code/i)
-               || pageText.match(/Instagram\s+code[:\s]+(\d{6})/i)
-               || pageText.match(/code[:\s]+(\d{6})/i);
+      // Combine both — search in table cells first, then full body
+      const searchText = tableData + '\n' + bodyText;
 
-      // Fallback: also try clicking any visible email rows
+      // Log the TABLE data specifically (not body marketing text)
+      log('🔍', `Table data: ${tableData.slice(0, 300).replace(/\n/g, ' | ')}`);
+
+      // Match OTP from Instagram subject: "415098 is your Instagram code"
+      let match = searchText.match(/(\d{6})\s+is\s+your\s+Instagram\s+code/i)
+               || searchText.match(/Instagram\s+code[:\s]+(\d{6})/i)
+               || tableData.match(/\b(\d{6})\b/); // any 6-digit in table rows
+
+      // Also try clicking the first email row if visible
       if (!match) {
-        const rows = await page.$$('table tr, tr, [class*="email-row"], [class*="mail-row"]');
-        if (rows.length > 1) { // >1 because header row counts
-          log('📬', `Found ${rows.length} table rows — clicking first email row...`);
-          try {
-            await rows[1].click(); // rows[0] = header, rows[1] = first email
-            await sleep(2000);
-            const bodyText = await page.evaluate(() => document.body.innerText || '');
-            match = bodyText.match(/(\d{6})\s+is\s+your\s+Instagram\s+code/i)
-                 || bodyText.match(/Instagram.*?(\d{6})/i)
-                 || bodyText.match(/\b(\d{6})\b/);
-          } catch {}
-        }
+        try {
+          const firstRow = await page.$('table tr:nth-child(2), table tbody tr:first-child');
+          if (firstRow) {
+            log('📬', 'Clicking first inbox row...');
+            await firstRow.click();
+            await sleep(2500);
+            // After clicking, read the email body area
+            const emailBody = await page.evaluate(() => {
+              const body = document.querySelector('[class*="email-body"], [class*="mail-body"], [id*="email-body"], .card-body, .email-content');
+              return body ? (body.innerText || body.textContent || '') : '';
+            });
+            const fullAfterClick = await page.evaluate(() => document.body.innerText || '');
+            log('🔍', `After click text: ${fullAfterClick.slice(0, 300).replace(/\n/g, ' | ')}`);
+            match = emailBody.match(/(\d{6})\s+is\s+your\s+Instagram\s+code/i)
+                 || emailBody.match(/\b(\d{6})\b/)
+                 || fullAfterClick.match(/(\d{6})\s+is\s+your\s+Instagram\s+code/i);
+          }
+        } catch {}
       }
 
       if (match) {
@@ -200,13 +216,14 @@ async function getOTPFrom1secemail(page, maxWait = 120000) {
         return match[1];
       }
 
-      log('⏳', 'OTP not yet visible — waiting...');
+      log('⏳', 'OTP not yet in inbox — waiting...');
 
     } catch (err) {
       log('⚠️', `Inbox poll error: ${err.message}`);
     }
     await sleep(5000);
   }
+
 
   // ── Save screenshot before giving up — helps debug WHY it failed
   try {
