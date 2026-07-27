@@ -19,6 +19,10 @@ const http  = require('http');
 const fs    = require('fs');
 const path  = require('path');
 
+// ─── SCREENSHOT DIR ────────────────────────────────────────────────────────────
+const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+if (!fs.existsSync(SCREENSHOT_DIR)) fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 const CONFIG = {
   // Instagram account to boost (receives likes + followers)
@@ -414,74 +418,154 @@ async function getInstagramPosts() {
   }
 }
 
-// ─── TURKISH SITE AUTOMATION ─────────────────────────────────────────────────
+// ─── SCREENSHOT HELPER ────────────────────────────────────────────────────────
+
+async function takeScreenshot(page, label) {
+  try {
+    const safeName = label.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 60);
+    const filePath = path.join(SCREENSHOT_DIR, `${safeName}_${Date.now()}.png`);
+    await page.screenshot({ path: filePath, fullPage: false });
+    log('📸', `Screenshot: screenshots/${path.basename(filePath)}`);
+  } catch (e) {
+    log('⚠️', `Screenshot failed: ${e.message}`);
+  }
+}
+
+// ─── LOGIN VALIDATOR ──────────────────────────────────────────────────────────
+
+async function checkLoginSuccess(page) {
+  const url       = page.url();
+  const title     = await page.title().catch(() => '');
+  const bodyText  = await page.evaluate(() => document.body?.innerText?.slice(0, 400) || '').catch(() => '');
+
+  const successWords = ['tools', 'dashboard', 'panel', 'member', 'hesap', 'profil', 'logout', 'çıkış'];
+  const failWords    = ['login', 'giriş', 'sign in', 'hata', 'error', 'wrong', 'incorrect', 'invalid'];
+
+  const all = (url + title + bodyText).toLowerCase();
+  if (successWords.some(w => all.includes(w))) {
+    log('✅', `LOGIN SUCCESS — URL: ${url}`);
+    return true;
+  }
+  if (failWords.some(w => all.includes(w))) {
+    log('❌', `LOGIN FAILED — still on login page. URL: ${url} | Title: ${title}`);
+    return false;
+  }
+  log('⚠️', `LOGIN UNCERTAIN — URL: ${url} | Title: ${title}`);
+  return null;
+}
+
+// ─── TURKISH SITE AUTOMATION (with screenshots + validation) ─────────────────
 
 async function automateWebsite(siteUrl, username, password, postLink) {
+  const siteName = siteUrl.replace(/https?:\/\//, '').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30);
   log('🌐', `Processing: ${siteUrl}`);
+
   const browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors']
   });
   const context = await browser.newContext({ ignoreHTTPSErrors: true });
   const page    = await context.newPage();
-  page.setDefaultTimeout(30000);
+  page.setDefaultTimeout(20000);
 
   try {
+    // Navigate + screenshot
     await page.goto(siteUrl, { timeout: 30000, waitUntil: 'domcontentloaded' });
-    await sleep(2000);
+    await sleep(1500);
+    await takeScreenshot(page, `01_loaded_${siteName}`);
 
     const html = await page.content();
     const ai   = await aiDetectSelectors(html, 'Login form: username or email field, password field, submit/login button');
 
-    // Login
+    // Fill login fields
     log('🔐', `Logging in as ${username}...`);
-    for (const sel of [ai?.username, '#username', 'input[name="username"]', 'input[type="text"]'].filter(Boolean)) {
-      try { await page.waitForSelector(sel, { timeout: 3000 }); await page.fill(sel, username); break; } catch {}
+    let userFilled = false;
+    for (const sel of [ai?.username, '#username', 'input[name="username"]', 'input[type="text"]', 'input[placeholder*="user" i]'].filter(Boolean)) {
+      try { await page.waitForSelector(sel, { timeout: 2000 }); await page.fill(sel, username); userFilled = true; break; } catch {}
     }
-    for (const sel of [ai?.password, 'input[name="password"]', 'input[type="password"]'].filter(Boolean)) {
-      try { await page.waitForSelector(sel, { timeout: 3000 }); await page.fill(sel, password); break; } catch {}
+    let passFilled = false;
+    for (const sel of [ai?.password, 'input[name="password"]', 'input[type="password"]', 'input[placeholder*="pass" i]'].filter(Boolean)) {
+      try { await page.waitForSelector(sel, { timeout: 2000 }); await page.fill(sel, password); passFilled = true; break; } catch {}
     }
-    for (const sel of [ai?.submit, '#login_insta', 'button[type="submit"]', 'button:has-text("Giriş")', 'button:has-text("Login")'].filter(Boolean)) {
-      try { await page.click(sel); break; } catch {}
+    log(userFilled ? '✅' : '❌', `Username field ${userFilled ? 'filled' : 'NOT FOUND'}`);
+    log(passFilled ? '✅' : '❌', `Password field ${passFilled ? 'filled' : 'NOT FOUND'}`);
+
+    // Screenshot before clicking login
+    await takeScreenshot(page, `02_filled_${siteName}`);
+
+    // Click login
+    let clicked = false;
+    for (const sel of [ai?.submit, '#login_insta', 'button[type="submit"]', 'input[type="submit"]', 'button:has-text("Giriş")', 'button:has-text("Login")'].filter(Boolean)) {
+      try { await page.click(sel); clicked = true; break; } catch {}
     }
-    await sleep(5000);
+    log(clicked ? '✅' : '❌', `Login button ${clicked ? 'clicked' : 'NOT FOUND'}`);
+
+    await sleep(4000);
+
+    // Screenshot AFTER login attempt — KEY validation screenshot
+    await takeScreenshot(page, `03_after_login_${siteName}`);
+
+    // Validate login
+    const loginOk = await checkLoginSuccess(page);
+    if (loginOk === false) {
+      log('❌', `Skipping ${siteUrl} — login failed`);
+      await browser.close();
+      return { success: false, reason: 'login_failed' };
+    }
 
     // Close popup
     for (const sel of ['button.close', '.modal-close', '.btn-close', '[aria-label="close"]']) {
-      try { await page.click(sel, { timeout: 2000 }); break; } catch {}
+      try { await page.click(sel, { timeout: 1500 }); break; } catch {}
     }
 
     // Send Likes
     log('❤️', 'Sending likes...');
+    let likesSent = false;
     try {
-      await page.click('a[href="/tools/send-like"]', { timeout: 8000 });
-      await sleep(1500);
+      await page.click('a[href="/tools/send-like"]', { timeout: 6000 });
+      await sleep(1000);
       await page.fill('input[name="mediaUrl"]', postLink);
       await page.click('button:has-text("Gönderiyi Bul")');
       await sleep(3000);
+      await takeScreenshot(page, `04_likes_form_${siteName}`);
       await page.fill('input[name="adet"]', '5000');
       await page.click('#formBegeniSubmitButton');
-      await sleep(3000);
-      log('✅', 'Likes sent');
-    } catch (err) { log('⚠️', `Likes skipped: ${err.message.slice(0, 60)}`); }
+      await sleep(2000);
+      await takeScreenshot(page, `05_likes_sent_${siteName}`);
+      likesSent = true;
+      log('✅', 'Likes sent ✓');
+    } catch (err) {
+      log('⚠️', `Likes skipped: ${err.message.slice(0, 80)}`);
+      await takeScreenshot(page, `04_likes_FAILED_${siteName}`);
+    }
 
     // Send Followers
     log('👥', 'Sending followers...');
+    let followersSent = false;
     try {
-      await page.click('a[href="/tools/send-follower"]', { timeout: 8000 });
-      await sleep(1500);
+      await page.click('a[href="/tools/send-follower"]', { timeout: 6000 });
+      await sleep(1000);
       await page.fill('input[name="username"]', CONFIG.TARGET_INSTAGRAM);
       await page.click('button:has-text("Kullanıcıyı Bul")');
       await sleep(3000);
+      await takeScreenshot(page, `06_followers_form_${siteName}`);
       await page.fill('input[name="adet"]', '49999');
       await page.click('#formTakipSubmitButton');
-      await sleep(3000);
-      log('✅', 'Followers sent');
-    } catch (err) { log('⚠️', `Followers skipped: ${err.message.slice(0, 60)}`); }
+      await sleep(2000);
+      await takeScreenshot(page, `07_followers_sent_${siteName}`);
+      followersSent = true;
+      log('✅', 'Followers sent ✓');
+    } catch (err) {
+      log('⚠️', `Followers skipped: ${err.message.slice(0, 80)}`);
+      await takeScreenshot(page, `06_followers_FAILED_${siteName}`);
+    }
 
-    log('✅', `Done: ${siteUrl}`);
+    log(likesSent || followersSent ? '✅' : '⚠️', `Done: ${siteUrl} | likes=${likesSent} followers=${followersSent}`);
+    return { success: true, likesSent, followersSent };
+
   } catch (err) {
-    log('❌', `Failed: ${siteUrl} — ${err.message.slice(0, 80)}`);
+    log('❌', `Fatal error on ${siteUrl}: ${err.message.slice(0, 80)}`);
+    await takeScreenshot(page, `ERROR_${siteName}`);
     throw err;
   } finally {
     await browser.close();

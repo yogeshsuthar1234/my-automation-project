@@ -54,10 +54,18 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          # Run for max 100 minutes (GitHub Actions timeout is 120)
           timeout 6000 node agent.js || true
         
-      # 7. Save newly created accounts for next run
+      # 7. Upload screenshots as artifact — view to validate login success
+      - name: 📸 Upload screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots-${{ github.run_number }}
+          path: Auto/screenshots/
+          retention-days: 7
+
+      # 8. Save newly created accounts for next run
       - name: 💾 Save accounts for next run
         uses: actions/cache@v3
         with:
