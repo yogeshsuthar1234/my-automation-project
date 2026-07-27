@@ -347,6 +347,22 @@ async function createInstagramAccount(index, total) {
     for (const sel of ['input[name="emailOrPhone"]', 'input[type="email"]', 'input[aria-label*="email" i]']) {
       try { await page.waitForSelector(sel, { timeout: 4000 }); await page.fill(sel, email); log('✅', `Email → ${sel}`); break; } catch {}
     }
+    // Fill password
+    for (const sel of ['input[name="password"]', 'input[type="password"]']) {
+      try { await page.waitForSelector(sel, { timeout: 3000 }); await page.fill(sel, password); log('✅', `Pass  → ${sel}`); break; } catch {}
+    }
+
+    // Fill birthday if selects exist on this page
+    try {
+      const selects = await page.$$('select');
+      if (selects.length >= 3) {
+        await selects[0].selectOption({ index: 6 });  // July
+        await selects[1].selectOption({ index: 15 }); // 15
+        await selects[2].selectOption({ value: '1995' }).catch(() => selects[2].selectOption({ index: 25 })); // 1995
+        log('✅', 'Birthday selects filled');
+      }
+    } catch {}
+
     // Fill full name
     for (const sel of ['input[name="fullName"]', 'input[aria-label*="name" i]']) {
       try { await page.waitForSelector(sel, { timeout: 3000 }); await page.fill(sel, fullName); log('✅', `Name  → ${sel}`); break; } catch {}
@@ -355,19 +371,16 @@ async function createInstagramAccount(index, total) {
     for (const sel of ['input[name="username"]', 'input[aria-label*="username" i]']) {
       try { await page.waitForSelector(sel, { timeout: 3000 }); await page.fill(sel, username); log('✅', `User  → ${sel}`); break; } catch {}
     }
-    // Fill password
-    for (const sel of ['input[name="password"]', 'input[type="password"]']) {
-      try { await page.waitForSelector(sel, { timeout: 3000 }); await page.fill(sel, password); log('✅', `Pass  → ${sel}`); break; } catch {}
-    }
 
     await sleep(1000);
     await saveShot(page, `create_${username}_02_filled`);
 
-    // Click Next
-    for (const sel of ['button[type="submit"]', 'button:has-text("Next")', 'button:has-text("Sign up")']) {
+    // Click Submit
+    for (const sel of ['button[type="submit"]', 'button:has-text("Submit")', 'button:has-text("Next")', 'button:has-text("Sign up")']) {
       try { await page.click(sel); log('✅', `Submit clicked`); break; } catch {}
     }
     await sleep(4000);
+    await saveShot(page, `create_${username}_03_submitted`);
     await saveShot(page, `create_${username}_03_submitted`);
 
     // Birthday page
