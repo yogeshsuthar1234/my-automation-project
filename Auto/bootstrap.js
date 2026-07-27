@@ -52,13 +52,17 @@ function generateFullName() {
   return `${first[Math.floor(Math.random() * first.length)]} ${last[Math.floor(Math.random() * last.length)]}`;
 }
 
-// ─── TEMP EMAIL PROVIDERS ────────────────────────────────────────────────────
-// Instagram blocks Guerrilla Mail — we use 1secmail + maildrop instead
+// ─── TEMP EMAIL — 1secemail.com via Playwright (PRIMARY) ─────────────────────
+// 1secemail.com is browser-only (no REST API). We use Playwright to:
+//   1. Open the site → get email address from input#mainEmail
+//   2. KEEP the browser page OPEN (stored in emailData._page)
+//   3. After Instagram sends OTP → click Refresh → read OTP from inbox rows
+//   4. Close the browser after OTP is received
 
 function httpGet(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
-    client.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+    client.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36' } }, (res) => {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(data); } });
@@ -66,58 +70,139 @@ function httpGet(url) {
   });
 }
 
-// Provider 1: 1secmail.com
-async function create1secmailInbox() {
+// ── Provider 1: 1secemail.com (Playwright browser — KEEP OPEN for OTP) ──────
+async function create1secemailInbox() {
+  log('🔍', 'Opening 1secemail.com via Playwright...');
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+  });
+  const context = await browser.newContext({
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    viewport: { width: 1280, height: 720 }
+  });
+  const page = await context.newPage();
+
   try {
-    log('🔍', 'Trying 1secmail.com...');
-    const list = await httpGet('https://www.1secmail.com/api/v1/?action=genRandomMailbox&count=1');
-    log('🔍', `1secmail response: ${JSON.stringify(list).slice(0, 100)}`);
-    if (Array.isArray(list) && list[0]) {
-      const [login, domain] = list[0].split('@');
-      log('📧', `1secmail inbox: ${list[0]}`);
-      return { email: list[0], provider: '1secmail', login, domain };
+    await page.goto('https://www.1secemail.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+    // Wait up to 15s for email to auto-load into input#mainEmail
+    log('⏳', 'Waiting for 1secemail.com to generate inbox...');
+    let email = '';
+    for (let i = 0; i < 15; i++) {
+      await sleep(1000);
+      email = await page.$eval('#mainEmail', el => el.value || el.getAttribute('aria-label') || '').catch(() => '');
+      if (email && email !== 'Loading' && email.includes('@')) {
+        log('📧', `1secemail.com inbox ready: ${email}`);
+        break;
+      }
     }
-    log('⚠️', `1secmail returned invalid response: ${JSON.stringify(list)}`);
+
+    // If auto-load failed → try setting custom alias via Change modal
+    if (!email || !email.includes('@')) {
+      log('⚠️', 'Auto-load failed — setting custom alias via Change modal...');
+      const alias = 'yogu' + Math.floor(Math.random() * 900000 + 100000);
+
+      try {
+        await page.click('#change_email_btn', { timeout: 5000 });
+        await sleep(1500);
+
+        // Fill alias input (try multiple selectors)
+        for (const sel of ['input#name_email', 'input[name="name"]', '.modal-body input[type="text"]', '.modal input:not([type="hidden"])']) {
+          try {
+            await page.waitForSelector(sel, { timeout: 2000 });
+            await page.triple_click?.(sel) || await page.click(sel);
+            await page.fill(sel, alias);
+            log('✅', `Alias input filled via ${sel}`);
+            break;
+          } catch {}
+        }
+
+        await page.click('#change_email', { timeout: 5000 });
+        await sleep(3000);
+
+        email = await page.$eval('#mainEmail', el => el.value || '').catch(() => '');
+        if (!email || !email.includes('@')) {
+          // Construct email from known alias
+          email = `${alias}@1secemail.com`;
+          log('⚠️', `Could not confirm email — assuming: ${email}`);
+        } else {
+          log('📧', `1secemail.com alias set: ${email}`);
+        }
+      } catch (err) {
+        log('⚠️', `Change alias failed: ${err.message}`);
+        await browser.close();
+        return null;
+      }
+    }
+
+    if (!email || !email.includes('@')) {
+      log('❌', '1secemail.com: could not get email address — site may be blocking this network');
+      await browser.close();
+      return null;
+    }
+
+    const [login, domain] = email.split('@');
+    log('✅', `Using 1secemail.com: ${email} (browser kept open for OTP)`);
+
+    // Return with _browser and _page so OTP reader can use the live inbox
+    return { email, provider: '1secemail.com', login, domain, _browser: browser, _page: page };
+
   } catch (err) {
-    log('⚠️', `1secmail failed: ${err.message}`);
+    log('⚠️', `1secemail.com Playwright error: ${err.message}`);
+    await browser.close();
+    return null;
   }
+}
+
+// ── OTP reader: polls the OPEN 1secemail.com Playwright page ─────────────────
+async function getOTPFrom1secemail(page, maxWait = 120000) {
+  const deadline = Date.now() + maxWait;
+  log('⏳', 'Polling 1secemail.com inbox (Playwright) for Instagram OTP...');
+
+  while (Date.now() < deadline) {
+    try {
+      // Click Refresh to fetch latest emails
+      await page.click('#refresh', { timeout: 5000 }).catch(() => {});
+      await sleep(3000);
+
+      // Check for email rows in inbox
+      const rows = await page.$$('table tbody tr, .mail-list .mail-item, [class*="mail"] tr');
+      if (rows.length > 0) {
+        log('📬', `Found ${rows.length} email(s) in inbox — checking for OTP...`);
+
+        for (const row of rows) {
+          try {
+            await row.click();
+            await sleep(2000);
+
+            // Read the full page text (OTP appears in subject or body)
+            const pageText = await page.evaluate(() => document.body.innerText);
+            const match = pageText.match(/\b(\d{6})\b/);
+            if (match) {
+              log('✅', `OTP from 1secemail.com: ${match[1]}`);
+              return match[1];
+            }
+          } catch {}
+        }
+      } else {
+        log('⏳', 'Inbox empty — waiting for Instagram OTP email...');
+      }
+    } catch (err) {
+      log('⚠️', `Inbox poll error: ${err.message}`);
+    }
+    await sleep(5000);
+  }
+
+  log('❌', 'OTP timeout — Instagram did not send OTP to 1secemail.com');
   return null;
 }
 
-// Provider 2: Mailnesia.com (no API key needed)
-async function createMailnesiaInbox() {
-  try {
-    log('🔍', 'Trying mailnesia.com...');
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    const login = Array.from({length: 10}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    const email = `${login}@mailnesia.com`;
-    log('📧', `Mailnesia inbox: ${email}`);
-    return { email, provider: 'mailnesia', login, domain: 'mailnesia.com' };
-  } catch (err) {
-    log('⚠️', `Mailnesia failed: ${err.message}`);
-  }
-  return null;
-}
-
-// Provider 3: dispostable.com
-async function createDispostableInbox() {
-  try {
-    log('🔍', 'Trying dispostable.com...');
-    const chars = 'abcdefghijklmnopqrstuvwxyz';
-    const login = Array.from({length: 10}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    const email = `${login}@dispostable.com`;
-    log('📧', `Dispostable inbox: ${email}`);
-    return { email, provider: 'dispostable', login, domain: 'dispostable.com' };
-  } catch (err) {
-    log('⚠️', `Dispostable failed: ${err.message}`);
-  }
-  return null;
-}
-
-// Provider 4: Guerrilla Mail — last resort
+// ── Fallback: Guerrilla Mail (REST API) ───────────────────────────────────────
 async function createGuerrillaInbox() {
   try {
-    log('🔍', 'Trying guerrillamail.com...');
+    log('🔍', 'Fallback: trying guerrillamail.com...');
     const data = await httpGet('https://api.guerrillamail.com/ajax.php?f=get_email_address');
     if (data.email_addr) {
       log('📧', `Guerrilla inbox: ${data.email_addr}`);
@@ -129,93 +214,13 @@ async function createGuerrillaInbox() {
   return null;
 }
 
-async function createTempEmail() {
-  // Try providers in order — 1secmail and mailnesia more likely to receive Instagram OTPs
-  const inbox = await create1secmailInbox()
-             || await createMailnesiaInbox()
-             || await createDispostableInbox()
-             || await createGuerrillaInbox();
-
-  if (inbox) {
-    log('✅', `Using provider: ${inbox.provider} → ${inbox.email}`);
-  } else {
-    log('❌', 'All email providers failed!');
-  }
-  return inbox;
-}
-
-// Read OTP from 1secmail inbox
-// Read OTP from 1secmail inbox
-async function getOTPFrom1secmail(login, domain, maxWait = 120000) {
-  const deadline = Date.now() + maxWait;
-  while (Date.now() < deadline) {
-    try {
-      const messages = await httpGet(
-        `https://www.1secmail.com/api/v1/?action=getMessages&login=${login}&domain=${domain}`
-      );
-      for (const msg of (Array.isArray(messages) ? messages : [])) {
-        const full = await httpGet(
-          `https://www.1secmail.com/api/v1/?action=readMessage&login=${login}&domain=${domain}&id=${msg.id}`
-        );
-        const body = (full.body || full.htmlBody || full.textBody || JSON.stringify(full));
-        const match = body.match(/\b(\d{6})\b/);
-        if (match) { log('✅', `OTP from 1secmail: ${match[1]}`); return match[1]; }
-      }
-    } catch {}
-    await sleep(5000);
-  }
-  return null;
-}
-
-// Read OTP from Mailnesia inbox
-async function getOTPFromMailnesia(login, maxWait = 120000) {
-  const deadline = Date.now() + maxWait;
-  while (Date.now() < deadline) {
-    try {
-      // Mailnesia RSS feed — public, no auth needed
-      const rss = await new Promise((resolve, reject) => {
-        https.get(`https://mailnesia.com/mailbox/${login}?rss`, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
-          let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d));
-        }).on('error', reject);
-      });
-      const match = rss.match(/\b(\d{6})\b/);
-      if (match) { log('✅', `OTP from Mailnesia: ${match[1]}`); return match[1]; }
-    } catch {}
-    await sleep(5000);
-  }
-  return null;
-}
-
-// Read OTP from Dispostable inbox
-async function getOTPFromDispostable(login, maxWait = 120000) {
-  const deadline = Date.now() + maxWait;
-  while (Date.now() < deadline) {
-    try {
-      const data = await httpGet(`https://www.dispostable.com/inbox/${login}/?format=json`);
-      const messages = Array.isArray(data) ? data : (data.messages || []);
-      for (const msg of messages) {
-        const body = (msg.body_text || msg.body_html || JSON.stringify(msg));
-        const match = body.match(/\b(\d{6})\b/);
-        if (match) { log('✅', `OTP from Dispostable: ${match[1]}`); return match[1]; }
-      }
-    } catch {}
-    await sleep(5000);
-  }
-  return null;
-}
-
-// Read OTP from Guerrilla Mail inbox
 async function getOTPFromGuerrilla(sid, maxWait = 120000) {
   const deadline = Date.now() + maxWait;
   while (Date.now() < deadline) {
     try {
-      const data = await httpGet(
-        `https://api.guerrillamail.com/ajax.php?f=check_email&seq=0&sid_token=${sid}`
-      );
+      const data = await httpGet(`https://api.guerrillamail.com/ajax.php?f=check_email&seq=0&sid_token=${sid}`);
       for (const mail of (data.list || [])) {
-        const full = await httpGet(
-          `https://api.guerrillamail.com/ajax.php?f=fetch_email&email_id=${mail.mail_id}&sid_token=${sid}`
-        );
+        const full = await httpGet(`https://api.guerrillamail.com/ajax.php?f=fetch_email&email_id=${mail.mail_id}&sid_token=${sid}`);
         const body = (full.mail_body || '') + (full.mail_excerpt || '');
         const match = body.match(/\b(\d{6})\b/);
         if (match) { log('✅', `OTP from Guerrilla: ${match[1]}`); return match[1]; }
@@ -226,13 +231,28 @@ async function getOTPFromGuerrilla(sid, maxWait = 120000) {
   return null;
 }
 
-// Universal OTP reader — routes to correct provider
+// ── Create inbox (try 1secemail first, fallback to Guerrilla) ─────────────────
+async function createTempEmail() {
+  const inbox = await create1secemailInbox() || await createGuerrillaInbox();
+  if (inbox) log('✅', `Inbox ready: ${inbox.email} [${inbox.provider}]`);
+  else log('❌', 'All email providers failed!');
+  return inbox;
+}
+
+// ── Universal OTP reader ───────────────────────────────────────────────────────
 async function getOTPFromEmail(emailData, maxWait = 120000) {
   log('⏳', `Waiting for OTP on ${emailData.email} via [${emailData.provider}]...`);
-  if (emailData.provider === '1secmail')    return await getOTPFrom1secmail(emailData.login, emailData.domain, maxWait);
-  if (emailData.provider === 'mailnesia')   return await getOTPFromMailnesia(emailData.login, maxWait);
-  if (emailData.provider === 'dispostable') return await getOTPFromDispostable(emailData.login, maxWait);
-  return await getOTPFromGuerrilla(emailData.sid, maxWait); // guerrilla fallback
+  if (emailData.provider === '1secemail.com' && emailData._page) {
+    return await getOTPFrom1secemail(emailData._page, maxWait);
+  }
+  return await getOTPFromGuerrilla(emailData.sid, maxWait);
+}
+
+// ── Close email browser after account creation ────────────────────────────────
+async function closeTempEmailBrowser(emailData) {
+  if (emailData?._browser) {
+    try { await emailData._browser.close(); } catch {}
+  }
 }
 
 // ─── CREATE ONE INSTAGRAM ACCOUNT ────────────────────────────────────────────
@@ -245,11 +265,12 @@ async function createInstagramAccount(index, total) {
 
   const emailData = await createTempEmail();
   if (!emailData) return null;
-  const { email, sid } = emailData;
+  const { email } = emailData;
 
   const browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
+
   });
   const context = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
@@ -319,6 +340,7 @@ async function createInstagramAccount(index, total) {
     const success  = finalUrl.includes('instagram.com') && !finalUrl.includes('signup');
 
     await browser.close();
+    await closeTempEmailBrowser(emailData); // close 1secemail.com browser
 
     if (success || !finalUrl.includes('signup')) {
       log('🎉', `Account created! ${username} / ${password} (email: ${email})`);
@@ -342,7 +364,8 @@ async function createInstagramAccount(index, total) {
 
   } catch (err) {
     log('❌', `Error creating ${username}: ${err.message}`);
-    await browser.close();
+    await browser.close().catch(() => {});
+    await closeTempEmailBrowser(emailData); // always clean up email browser
     return null;
   }
 }
