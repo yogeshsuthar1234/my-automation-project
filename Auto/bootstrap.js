@@ -52,7 +52,9 @@ function generateFullName() {
   return `${first[Math.floor(Math.random() * first.length)]} ${last[Math.floor(Math.random() * last.length)]}`;
 }
 
-// ─── GUERRILLA MAIL ───────────────────────────────────────────────────────────
+// ─── TEMP EMAIL PROVIDERS ────────────────────────────────────────────────────
+// Instagram blocks Guerrilla Mail — we use 1secmail + maildrop instead
+
 function httpGet(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
@@ -64,21 +66,71 @@ function httpGet(url) {
   });
 }
 
-async function createTempEmail() {
+// Provider 1: 1secmail.com — works with Instagram OTPs
+async function create1secmailInbox() {
   try {
-    const data = await httpGet('https://api.guerrillamail.com/ajax.php?f=get_email_address');
-    log('📧', `Temp email: ${data.email_addr}`);
-    return { email: data.email_addr, sid: data.sid_token };
+    const list = await httpGet('https://www.1secmail.com/api/v1/?action=genRandomMailbox&count=1');
+    if (Array.isArray(list) && list[0]) {
+      const [login, domain] = list[0].split('@');
+      log('📧', `1secmail inbox: ${list[0]}`);
+      return { email: list[0], provider: '1secmail', login, domain };
+    }
   } catch (err) {
-    log('❌', `Guerrilla Mail failed: ${err.message}`);
-    return null;
+    log('⚠️', `1secmail failed: ${err.message}`);
   }
+  return null;
 }
 
-async function getOTPFromEmail(sid, maxWait = 120000) {
-  log('⏳', 'Waiting for Instagram OTP email (up to 2 min)...');
-  const deadline = Date.now() + maxWait;
+// Provider 2: Guerrilla Mail — fallback
+async function createGuerrillaInbox() {
+  try {
+    const data = await httpGet('https://api.guerrillamail.com/ajax.php?f=get_email_address');
+    if (data.email_addr) {
+      log('📧', `Guerrilla inbox: ${data.email_addr}`);
+      return { email: data.email_addr, provider: 'guerrilla', sid: data.sid_token };
+    }
+  } catch (err) {
+    log('⚠️', `Guerrilla Mail failed: ${err.message}`);
+  }
+  return null;
+}
 
+async function createTempEmail() {
+  // Try 1secmail first (Instagram delivers OTPs here)
+  const inbox = await create1secmailInbox();
+  if (inbox) return inbox;
+  // Fallback to Guerrilla
+  return await createGuerrillaInbox();
+}
+
+// Read OTP from 1secmail inbox
+async function getOTPFrom1secmail(login, domain, maxWait = 120000) {
+  const deadline = Date.now() + maxWait;
+  while (Date.now() < deadline) {
+    try {
+      const messages = await httpGet(
+        `https://www.1secmail.com/api/v1/?action=getMessages&login=${login}&domain=${domain}`
+      );
+      for (const msg of (Array.isArray(messages) ? messages : [])) {
+        const full = await httpGet(
+          `https://www.1secmail.com/api/v1/?action=readMessage&login=${login}&domain=${domain}&id=${msg.id}`
+        );
+        const body = (full.body || full.htmlBody || full.textBody || JSON.stringify(full));
+        const match = body.match(/\b(\d{6})\b/);
+        if (match) {
+          log('✅', `OTP from 1secmail: ${match[1]}`);
+          return match[1];
+        }
+      }
+    } catch {}
+    await sleep(5000);
+  }
+  return null;
+}
+
+// Read OTP from Guerrilla Mail inbox
+async function getOTPFromGuerrilla(sid, maxWait = 120000) {
+  const deadline = Date.now() + maxWait;
   while (Date.now() < deadline) {
     try {
       const data = await httpGet(
@@ -91,15 +143,24 @@ async function getOTPFromEmail(sid, maxWait = 120000) {
         const body = (full.mail_body || '') + (full.mail_excerpt || '');
         const match = body.match(/\b(\d{6})\b/);
         if (match) {
-          log('✅', `OTP: ${match[1]}`);
+          log('✅', `OTP from Guerrilla: ${match[1]}`);
           return match[1];
         }
       }
     } catch {}
     await sleep(5000);
   }
-  log('❌', 'OTP timed out');
   return null;
+}
+
+// Universal OTP reader — picks right provider
+async function getOTPFromEmail(emailData, maxWait = 120000) {
+  log('⏳', `Waiting for Instagram OTP on ${emailData.email} (up to 2 min)...`);
+  if (emailData.provider === '1secmail') {
+    return await getOTPFrom1secmail(emailData.login, emailData.domain, maxWait);
+  } else {
+    return await getOTPFromGuerrilla(emailData.sid, maxWait);
+  }
 }
 
 // ─── CREATE ONE INSTAGRAM ACCOUNT ────────────────────────────────────────────
@@ -167,8 +228,8 @@ async function createInstagramAccount(index, total) {
       }
     } catch {}
 
-    // Get OTP
-    const otp = await getOTPFromEmail(sid, 120000);
+    // Get OTP — uses whichever provider created the inbox
+    const otp = await getOTPFromEmail(emailData, 120000);
     if (!otp) {
       log('❌', `No OTP for ${username} — account creation failed`);
       await browser.close();
