@@ -32,6 +32,18 @@ const HEADLESS = process.env.HEADLESS !== undefined
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log   = (e, m) => console.log(`${e}  ${m}`);
 
+async function saveShot(page, label) {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const screenshotDir = path.join(__dirname, 'screenshots');
+    if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
+    const p = path.join(screenshotDir, `${label}.png`);
+    await page.screenshot({ path: p, fullPage: true });
+    log('📸', `Screenshot saved: screenshots/${label}.png`);
+  } catch {}
+}
+
 function loadAccounts() {
   try {
     if (fs.existsSync(ACCOUNTS_FILE)) return JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8'));
@@ -326,9 +338,10 @@ async function createInstagramAccount(index, total) {
 
   try {
     await page.goto('https://www.instagram.com/accounts/signup/', {
-      waitUntil: 'networkidle', timeout: 60000
+      waitUntil: 'domcontentloaded', timeout: 30000
     });
     await sleep(3000);
+    await saveShot(page, `create_${username}_01_loaded`);
 
     // Fill email
     for (const sel of ['input[name="emailOrPhone"]', 'input[type="email"]', 'input[aria-label*="email" i]']) {
@@ -348,12 +361,14 @@ async function createInstagramAccount(index, total) {
     }
 
     await sleep(1000);
+    await saveShot(page, `create_${username}_02_filled`);
 
     // Click Next
     for (const sel of ['button[type="submit"]', 'button:has-text("Next")', 'button:has-text("Sign up")']) {
       try { await page.click(sel); log('✅', `Submit clicked`); break; } catch {}
     }
     await sleep(4000);
+    await saveShot(page, `create_${username}_03_submitted`);
 
     // Birthday page
     try {
@@ -364,6 +379,7 @@ async function createInstagramAccount(index, total) {
         await page.click('button[type="submit"]');
         await sleep(2000);
         log('✅', 'Birthday filled');
+        await saveShot(page, `create_${username}_03b_birthday_submitted`);
       }
     } catch {}
 
@@ -371,6 +387,7 @@ async function createInstagramAccount(index, total) {
     const otp = await getOTPFromEmail(emailData, 120000);
     if (!otp) {
       log('❌', `No OTP for ${username} — account creation failed`);
+      await saveShot(page, `create_${username}_04_FAILED_no_otp`);
       await browser.close();
       return null;
     }
@@ -380,9 +397,12 @@ async function createInstagramAccount(index, total) {
       try { await page.waitForSelector(sel, { timeout: 5000 }); await page.fill(sel, otp); log('✅', `OTP entered`); break; } catch {}
     }
     await sleep(1000);
+    await saveShot(page, `create_${username}_05_otp_entered`);
+
     try { await page.click('button[type="submit"]'); await sleep(5000); } catch {}
 
     const finalUrl = page.url();
+    await saveShot(page, `create_${username}_06_final_result`);
     const success  = finalUrl.includes('instagram.com') && !finalUrl.includes('signup');
 
     await browser.close();
@@ -414,6 +434,7 @@ async function createInstagramAccount(index, total) {
 
   } catch (err) {
     log('❌', `Error creating ${username}: ${err.message}`);
+    await saveShot(page, `create_${username}_ERROR_exception`);
     await browser.close().catch(() => {});
     await closeTempEmailBrowser(emailData); // always clean up email browser
     return null;
