@@ -1,7 +1,17 @@
 {
   "password": "y@70164",
   "nextIndex": 0,
-  "usernames": [],
+  "usernames": [
+    {
+      "username": "urbaneye712026",
+      "status": "active",
+      "consecutiveFails": 0,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
+      "lastRunAt": null,
+      "lastReason": null
+    }
+  ],
   "removed": [],
-  "updatedAt": "2026-07-27T19:40:12.318Z"
+  "updatedAt": "2026-07-27T19:40:19.186Z"
 }
