@@ -58,9 +58,9 @@ function saveAccounts(accounts) {
 function generateUsername() {
   const prefixes = ['yogu','mast','cool','fast','nova','star','blaze','swift','flex','bolt','apex','vibe'];
   const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-  const num    = Math.floor(Math.random() * 90000) + 10000;
-  const sep    = ['', '.', '_'][Math.floor(Math.random() * 3)];
-  return `${prefix}${sep}${num}`;
+  const stamp  = Date.now().toString().slice(-6);
+  const rnd    = Math.floor(Math.random() * 90 + 10);
+  return `${prefix}_${stamp}${rnd}`;
 }
 
 function generateFullName() {
@@ -344,11 +344,11 @@ async function createInstagramAccount(index, total) {
     await saveShot(page, `create_${username}_01_loaded`);
 
     // Fill email
-    for (const sel of ['input[name="emailOrPhone"]', 'input[type="email"]', 'input[aria-label*="email" i]']) {
-      try { await page.waitForSelector(sel, { timeout: 4000 }); await page.fill(sel, email); log('✅', `Email → ${sel}`); break; } catch {}
+    for (const sel of ['input[aria-label*="Mobile" i]', 'input[placeholder*="Mobile" i]', 'input[name="emailOrPhone"]', 'input[name="email"]', 'input[type="email"]']) {
+      try { await page.waitForSelector(sel, { timeout: 3000 }); await page.fill(sel, email); log('✅', `Email → ${sel}`); break; } catch {}
     }
     // Fill password
-    for (const sel of ['input[name="password"]', 'input[type="password"]']) {
+    for (const sel of ['input[aria-label*="Password" i]', 'input[placeholder*="Password" i]', 'input[name="password"]', 'input[type="password"]']) {
       try { await page.waitForSelector(sel, { timeout: 3000 }); await page.fill(sel, password); log('✅', `Pass  → ${sel}`); break; } catch {}
     }
 
@@ -364,11 +364,11 @@ async function createInstagramAccount(index, total) {
     } catch {}
 
     // Fill full name
-    for (const sel of ['input[name="fullName"]', 'input[aria-label*="name" i]']) {
+    for (const sel of ['input[aria-label*="Full name" i]', 'input[placeholder*="Full name" i]', 'input[name="fullName"]']) {
       try { await page.waitForSelector(sel, { timeout: 3000 }); await page.fill(sel, fullName); log('✅', `Name  → ${sel}`); break; } catch {}
     }
     // Fill username
-    for (const sel of ['input[name="username"]', 'input[aria-label*="username" i]']) {
+    for (const sel of ['input[aria-label*="Username" i]', 'input[placeholder*="Username" i]', 'input[name="username"]']) {
       try { await page.waitForSelector(sel, { timeout: 3000 }); await page.fill(sel, username); log('✅', `User  → ${sel}`); break; } catch {}
     }
 
