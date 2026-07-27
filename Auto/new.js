@@ -52,13 +52,13 @@ async function getInstagramPosts(targetUsername) {
     const posts = [];
 
     const DEFAULT_POSTS = [
-        'https://www.instagram.com/reel/DNQk3AVzDUt/?igsh=MXQwb3E2bmw2Yjg2bw==',
-        'https://www.instagram.com/reel/DNDkhsxzOAw/?igsh=dHF1YmpnaHAza3lz',
-        'https://www.instagram.com/reel/DPqbwQgiHME/?igsh=MXJnZnY1c253bHlkbA==',
-        'https://www.instagram.com/reel/DPtEcwmiL0t/?igsh=MTIzYW1tNWt2MGx4OA==',
-        'https://www.instagram.com/reel/DPvh0PhiETV/?igsh=MTBsamxiNW15eGNueA==',
-        'https://www.instagram.com/reel/DPv7AVgE5Fm/?igsh=MWw4eHlwYzk3YWs3cw==',
-        'https://www.instagram.com/reel/DPyHOu9E8IZ/?igsh=MTg5eTd2Y2hzeWdicA=='
+        'https://www.instagram.com/reel/DVtNdQUE7ZV/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==',
+        'https://www.instagram.com/p/Da7LhtLE7Dx/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==',
+        'https://www.instagram.com/reel/DaqLI21Ie6P/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==',
+        'https://www.instagram.com/p/DYMiiUoiFJ5/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==',
+        'https://www.instagram.com/reel/DWUHJRBiJdx/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==',
+        'https://www.instagram.com/reel/DVBX2SdEwws/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==',
+        'https://www.instagram.com/reel/DWg9XR5DWT3/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA=='
     ];
 
     try {
