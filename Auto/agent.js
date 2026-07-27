@@ -469,7 +469,22 @@ async function createInstagramAccount() {
   }
 }
 
-// ─── INSTAGRAM POST SCRAPER ──────────────────────────────────────────────────
+// ─── INSTAGRAM POST SC
+// ─── SCREENSHOT HELPER ──────────────────────────────────────────────────────────
+//
+// Screenshots are saved to: Auto/screenshots/
+// Only 15 files are kept (one per site), overwritten each run.
+// Location in GitHub Actions: downloaded from Actions → Artifacts → "screenshots"
+//
+async function takeScreenshot(page, fixedName) {
+  try {
+    const filePath = path.join(SCREENSHOT_DIR, `${fixedName}.png`);
+    await page.screenshot({ path: filePath, fullPage: false });
+    log('📸', `Screenshot: screenshots/${fixedName}.png`);
+  } catch (e) {
+    log('⚠️', `Screenshot failed: ${e.message}`);
+  }
+}
 
 async function getInstagramPosts() {
   log('📸', `Fetching posts from: ${CONFIG.TARGET_INSTAGRAM}`);
@@ -544,10 +559,14 @@ async function checkLoginSuccess(page) {
 
 // ─── TURKISH SITE AUTOMATION (with screenshots + validation + OTP handling) ───
 
-async function automateWebsite(siteUrl, account, postLink) {
+async function automateWebsite(siteUrl, account, postLink, siteIndex) {
   const { username, password, emailLogin } = account;
-  const siteName = siteUrl.replace(/https?:\/\//, '').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30);
-  log('🌐', `Processing: ${siteUrl}`);
+  // Fixed short name for this site slot (e.g. site_03_takipcitime)
+  const shortName = siteUrl.replace(/https?:\/\/(?:www\.)?/, '').split('/')[0].replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
+  const fixedSlot = `site_${String(siteIndex).padStart(2, '0')}_${shortName}`;
+  const siteName  = shortName; // kept for internal use
+  log('🌐', `Processing [${siteIndex}]: ${siteUrl}`);
+  log('📸', `Screenshot slot: screenshots/${fixedSlot}.png (overwrites each run)`);
 
   const browser = await chromium.launch({
     headless: true,
@@ -558,10 +577,9 @@ async function automateWebsite(siteUrl, account, postLink) {
   page.setDefaultTimeout(20000);
 
   try {
-    // Navigate + screenshot
+    // Navigate
     await page.goto(siteUrl, { timeout: 30000, waitUntil: 'domcontentloaded' });
     await sleep(1500);
-    await takeScreenshot(page, `01_loaded_${siteName}`);
 
     const html = await page.content();
     const ai   = await aiDetectSelectors(html, 'Login form: username or email field, password field, submit/login button');
@@ -580,7 +598,7 @@ async function automateWebsite(siteUrl, account, postLink) {
     log(passFilled ? '✅' : '❌', `Password field ${passFilled ? 'filled' : 'NOT FOUND'}`);
 
     // Screenshot before clicking login
-    await takeScreenshot(page, `02_filled_${siteName}`);
+    // (removed — saving only post-login to keep just 15 files)
 
     // Click login
     let clicked = false;
@@ -592,8 +610,6 @@ async function automateWebsite(siteUrl, account, postLink) {
     await sleep(4000);
 
     // ── INSTAGRAM OTP CHALLENGE DETECTION ────────────────────────────────────
-    // Instagram sometimes sends an OTP when it detects login from a new IP.
-    // Detect the challenge page and auto-fill using the account's stored email.
     try {
       const pageText = await page.evaluate(() => document.body?.innerText || '');
       const pageUrl  = page.url();
@@ -604,8 +620,6 @@ async function automateWebsite(siteUrl, account, postLink) {
 
       if (isChallenge) {
         log('🔐', `Instagram OTP challenge detected on ${siteUrl} — reading OTP from email...`);
-        await takeScreenshot(page, `03b_otp_challenge_${siteName}`);
-
         const otp = await readOTPFrom1secemail(emailLogin);
         if (otp) {
           for (const sel of ['input[name="verificationCode"]', 'input[aria-label*="code" i]', 'input[maxlength="6"]', 'input[name="code"]']) {
@@ -617,21 +631,20 @@ async function automateWebsite(siteUrl, account, postLink) {
           }
           await sleep(4000);
           log('✅', 'OTP entered for login challenge');
-          await takeScreenshot(page, `03c_after_otp_${siteName}`);
-        } else {
-          log('⚠️', 'Could not get OTP — login challenge may block this account on this site');
         }
       }
     } catch {}
     // ─────────────────────────────────────────────────────────────────────────
 
-    // Screenshot AFTER login attempt — KEY validation screenshot
-    await takeScreenshot(page, `03_after_login_${siteName}`);
+    // ★ KEY SCREENSHOT — after login (fixed filename, overwrites each run)
+    // Shows whether login succeeded or failed
+    await takeScreenshot(page, fixedSlot);
+    log('📸', `Post-login state saved → screenshots/${fixedSlot}.png`);
 
     // Validate login
     const loginOk = await checkLoginSuccess(page);
     if (loginOk === false) {
-      log('❌', `Skipping ${siteUrl} — login failed`);
+      log('❌', `Skipping ${siteUrl} — login failed (see ${fixedSlot}.png)`);
       await browser.close();
       return { success: false, reason: 'login_failed' };
     }
@@ -671,16 +684,13 @@ async function automateWebsite(siteUrl, account, postLink) {
       await page.fill('input[name="username"]', CONFIG.TARGET_INSTAGRAM);
       await page.click('button:has-text("Kullanıcıyı Bul")');
       await sleep(3000);
-      await takeScreenshot(page, `06_followers_form_${siteName}`);
       await page.fill('input[name="adet"]', '49999');
       await page.click('#formTakipSubmitButton');
       await sleep(2000);
-      await takeScreenshot(page, `07_followers_sent_${siteName}`);
       followersSent = true;
       log('✅', 'Followers sent ✓');
     } catch (err) {
       log('⚠️', `Followers skipped: ${err.message.slice(0, 80)}`);
-      await takeScreenshot(page, `06_followers_FAILED_${siteName}`);
     }
 
     log(likesSent || followersSent ? '✅' : '⚠️', `Done: ${siteUrl} | likes=${likesSent} followers=${followersSent}`);
@@ -688,7 +698,7 @@ async function automateWebsite(siteUrl, account, postLink) {
 
   } catch (err) {
     log('❌', `Fatal error on ${siteUrl}: ${err.message.slice(0, 80)}`);
-    await takeScreenshot(page, `ERROR_${siteName}`);
+    await takeScreenshot(page, `${fixedSlot}_ERROR`);
     throw err;
   } finally {
     await browser.close();
@@ -704,11 +714,12 @@ async function processAccount(account, posts) {
   let completed = 0;
 
   for (let i = 0; i < CONFIG.WEBSITES.length; i++) {
-    const site = CONFIG.WEBSITES[i];
-    const post = posts[postIndex % posts.length];
+    const site      = CONFIG.WEBSITES[i];
+    const post      = posts[postIndex % posts.length];
+    const siteIndex = i + 1; // 1-based: 01 to 15
 
     try {
-      await automateWebsite(site, account, post);
+      await automateWebsite(site, account, post, siteIndex);
       completed++;
     } catch {}
 
