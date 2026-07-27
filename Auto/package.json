@@ -4,10 +4,15 @@
   "description": "AI-powered Instagram automation agent",
   "main": "agent.js",
   "scripts": {
-    "start":     "node agent.js",
-    "agent":     "node agent.js",
+    "start": "node agent.js",
+    "agent": "node agent.js",
     "bootstrap": "node bootstrap.js",
-    "reset":     "node bootstrap.js 15 --reset"
+    "reset": "node bootstrap.js 1 --reset",
+    "pipeline": "node agent.js",
+    "pipeline:2": "node -e \"process.env.ACCOUNT_CYCLES='2'; require('./agent')\"",
+    "test:email": "node test_email.js --wait 180",
+    "pipeline:fresh": "node -e \"process.env.RESET_ACCOUNTS='true'; require('./agent')\"",
+    "pipeline:manual": "node manual_pipeline.js"
   },
   "keywords": [],
   "author": "",

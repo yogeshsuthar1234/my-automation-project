@@ -21,16 +21,14 @@ on:
 jobs:
 
   # ═══════════════════════════════════════════════════════════════════
-  # PHASE 1 — Create 15 Fresh Instagram Accounts
+  # PHASE 1 — Create One Fresh Instagram Account
   # ═══════════════════════════════════════════════════════════════════
   bootstrap:
     name: 🏭 Phase 1 — Create Fresh Accounts
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    # Run if: mode is 'full' or 'bootstrap', or it's a scheduled run
+    # Runs only when manual mode is 'bootstrap'. Normal runs create accounts just-in-time in agent.js.
     if: >
-      github.event_name == 'schedule' ||
-      github.event.inputs.mode == 'full' ||
       github.event.inputs.mode == 'bootstrap'
     
     outputs:
@@ -81,19 +79,19 @@ jobs:
             echo "ready=0" >> $GITHUB_OUTPUT
           fi
 
-      # Create fresh accounts if we have fewer than 10 active
-      - name: 🏭 Create fresh Instagram accounts
+      # Create one account only for manual bootstrap testing
+      - name: 🏭 Create one fresh Instagram account
         working-directory: ./Auto
         run: |
           ACTIVE=${{ steps.check.outputs.ready }}
           echo "Currently have $ACTIVE active accounts"
           
-          if [ "$ACTIVE" -lt "10" ]; then
-            echo "Need more accounts — running bootstrap (target: 15)..."
+          if [ "$ACTIVE" -lt "1" ]; then
+            echo "Need one account - running bootstrap (target: 1)..."
             # --reset clears all expired accounts first
-            timeout 5000 node bootstrap.js 15 --reset || true
+            timeout 5000 node bootstrap.js 1 --reset || true
           else
-            echo "✅ Already have $ACTIVE active accounts — skipping bootstrap"
+            echo "Already have $ACTIVE active account(s) - skipping bootstrap"
           fi
 
       # Show account summary
@@ -171,8 +169,8 @@ jobs:
           restore-keys: |
             instagram-accounts-v2-
 
-      # Verify we have accounts before running
-      - name: ✅ Verify accounts available
+      # Show saved account state. The agent can create one just-in-time if none exist.
+      - name: Account availability snapshot
         working-directory: ./Auto
         run: |
           if [ -f accounts.json ]; then
@@ -181,13 +179,8 @@ jobs:
               console.log(a.filter(x => x.status === 'active').length);
             ")
             echo "Active accounts available: $ACTIVE"
-            if [ "$ACTIVE" -eq "0" ]; then
-              echo "❌ No active accounts! Cannot run automation."
-              exit 1
-            fi
           else
-            echo "❌ accounts.json not found!"
-            exit 1
+            echo "No accounts.json found. Agent will create one account when the cycle starts."
           fi
 
       # Run the AI automation agent
@@ -195,6 +188,8 @@ jobs:
         working-directory: ./Auto
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ACCOUNT_CYCLES: '1'
+          MAX_USES_PER_ACCOUNT: '1'
         run: |
           timeout 6000 node agent.js || true
 

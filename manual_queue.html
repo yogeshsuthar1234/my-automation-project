@@ -1,0 +1,252 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manual Username Queue</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #f6f7f9; color: #111827; }
+    main { max-width: 860px; margin: 0 auto; padding: 40px 18px; }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0; }
+    p { color: #4b5563; line-height: 1.5; }
+    section { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; margin-top: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    label { display: block; font-size: 13px; font-weight: 700; margin: 0 0 6px; }
+    input { width: 100%; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; font-size: 15px; background: #fff; }
+    button { border: 0; border-radius: 6px; padding: 12px 14px; font-weight: 700; cursor: pointer; background: #0f6fff; color: #fff; }
+    button.secondary { background: #111827; }
+    button.danger { background: #b91c1c; }
+    button.ghost { background: #e5e7eb; color: #111827; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .status { min-height: 22px; margin-top: 12px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; color: #334155; }
+    .list { display: grid; gap: 8px; margin-top: 12px; }
+    .item { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fafafa; }
+    .meta { color: #6b7280; font-size: 12px; margin-top: 2px; }
+    details { margin-top: 14px; }
+    summary { cursor: pointer; color: #374151; font-weight: 700; }
+    .settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+    .stat { border: 1px solid #e5e7eb; border-radius: 6px; background: #fafafa; padding: 12px; }
+    .stat strong { display: block; font-size: 22px; color: #111827; }
+    .stat span { color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    @media (max-width: 720px) { .row, .settings, .stats { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Manual Username Queue</h1>
+  <p>Add usernames that already work without re-verification. Password stays fixed in the runner.</p>
+
+  <section>
+    <div class="row">
+      <div>
+        <label for="username">Instagram username</label>
+        <input id="username" autocomplete="off" placeholder="example_username">
+      </div>
+      <button id="addBtn">Add Username</button>
+    </div>
+    <div class="actions">
+      <button class="secondary" id="loadBtn">Load Queue</button>
+      <button id="saveBtn">Save To GitHub</button>
+      <button class="ghost" id="runBtn">Run Manual Workflow</button>
+    </div>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section>
+    <strong>Queue summary</strong>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section>
+    <strong>Active usernames</strong>
+    <div class="list" id="list"></div>
+  </section>
+
+  <details>
+    <summary>GitHub settings</summary>
+    <section class="settings">
+      <div><label>Owner</label><input id="owner" value="yogeshsuthar1234"></div>
+      <div><label>Repo</label><input id="repo" value="my-automation-project"></div>
+      <div><label>Branch</label><input id="branch" value="main"></div>
+      <div><label>Queue path</label><input id="path" value="Auto/manual_usernames.json"></div>
+      <div><label>Workflow file</label><input id="workflow" value="manual-takip.yml"></div>
+      <div><label>GitHub token</label><input id="token" type="password" placeholder="fine-grained token with Contents + Actions write"></div>
+    </section>
+  </details>
+</main>
+
+<script>
+const DEFAULT_QUEUE = { password: 'y@70164', nextIndex: 0, usernames: [], removed: [], updatedAt: null };
+let queue = structuredClone(DEFAULT_QUEUE);
+let sha = null;
+
+const $ = id => document.getElementById(id);
+const status = msg => $('status').textContent = msg;
+const cleanUsername = value => String(value || '').trim().replace(/^@+/, '').replace(/[^a-zA-Z0-9._]/g, '').slice(0, 60);
+
+function readSettings() {
+  return {
+    owner: $('owner').value.trim(),
+    repo: $('repo').value.trim(),
+    branch: $('branch').value.trim() || 'main',
+    path: $('path').value.trim() || 'Auto/manual_usernames.json',
+    workflow: $('workflow').value.trim() || 'manual-takip.yml',
+    token: $('token').value.trim()
+  };
+}
+
+function saveSettings() {
+  for (const id of ['owner','repo','branch','path','workflow','token']) localStorage.setItem('mq_' + id, $(id).value);
+}
+
+function restoreSettings() {
+  for (const id of ['owner','repo','branch','path','workflow','token']) {
+    const saved = localStorage.getItem('mq_' + id);
+    if (saved) $(id).value = saved;
+  }
+}
+
+function normalizeQueue(data) {
+  const next = Object.assign({}, DEFAULT_QUEUE, data || {});
+  const seen = new Set();
+  next.usernames = (next.usernames || []).map(item => typeof item === 'string' ? { username: item } : item)
+    .map(item => Object.assign({ status: 'active', consecutiveFails: 0, cyclesCompleted: 0, totalTaskSuccesses: 0 }, item, { username: cleanUsername(item.username) }))
+    .filter(item => item.username && !seen.has(item.username.toLowerCase()) && seen.add(item.username.toLowerCase()));
+  next.removed = Array.isArray(next.removed) ? next.removed : [];
+  return next;
+}
+
+function updateStats() {
+  const active = queue.usernames.filter(item => item.status === 'active');
+  const paused = queue.usernames.filter(item => item.status === 'paused');
+  const removed = queue.removed || [];
+  const totalFails = queue.usernames.reduce((sum, item) => sum + (Number(item.consecutiveFails) || 0), 0);
+  const totalCycles = queue.usernames.reduce((sum, item) => sum + (Number(item.cyclesCompleted) || 0), 0);
+  const totalSuccesses = queue.usernames.reduce((sum, item) => sum + (Number(item.totalTaskSuccesses) || 0), 0);
+  const atRisk = active.filter(item => (Number(item.consecutiveFails) || 0) >= 5).length;
+  const updated = queue.updatedAt ? new Date(queue.updatedAt).toLocaleString() : 'Never';
+
+  $('stats').innerHTML = [
+    ['Active', active.length],
+    ['Total Listed', queue.usernames.length],
+    ['Paused', paused.length],
+    ['Removed', removed.length],
+    ['At Risk', atRisk],
+    ['Fail Count', totalFails],
+    ['Cycles Done', totalCycles],
+    ['Task Successes', totalSuccesses]
+  ].map(([label, value]) => `<div class="stat"><strong>${value}</strong><span>${label}</span></div>`).join('')
+    + `<div class="meta" style="grid-column: 1 / -1;">Last updated: ${updated}</div>`;
+}
+
+function render() {
+  updateStats();
+  const list = $('list');
+  list.innerHTML = '';
+  const active = queue.usernames.filter(item => item.status === 'active');
+  if (!active.length) {
+    list.innerHTML = '<p>No active usernames yet.</p>';
+    return;
+  }
+  for (const item of active) {
+    const row = document.createElement('div');
+    row.className = 'item';
+    row.innerHTML = `<div><strong>@${item.username}</strong><div class="meta">fails ${item.consecutiveFails || 0}/7 · cycles ${item.cyclesCompleted || 0} · successes ${item.totalTaskSuccesses || 0}</div></div>`;
+    const remove = document.createElement('button');
+    remove.className = 'danger';
+    remove.textContent = 'Remove';
+    remove.onclick = () => { queue.usernames = queue.usernames.filter(x => x.username !== item.username); render(); };
+    row.appendChild(remove);
+    list.appendChild(row);
+  }
+}
+
+async function github(method, url, body) {
+  const { token } = readSettings();
+  if (!token) throw new Error('GitHub token is required');
+  const res = await fetch(url, {
+    method,
+    headers: {
+      Authorization: 'Bearer ' + token,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(body ? { 'Content-Type': 'application/json' } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) throw new Error(method + ' failed: ' + res.status + ' ' + await res.text());
+  return res.status === 204 ? null : await res.json();
+}
+
+function decodeBase64Unicode(value) {
+  const binary = atob(value.replace(/\n/g, ''));
+  const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function encodeBase64Unicode(value) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  bytes.forEach(byte => binary += String.fromCharCode(byte));
+  return btoa(binary);
+}
+
+async function loadQueue() {
+  saveSettings();
+  const s = readSettings();
+  status('Loading queue...');
+  const url = `https://api.github.com/repos/${s.owner}/${s.repo}/contents/${encodeURIComponent(s.path).replace(/%2F/g, '/')}?ref=${encodeURIComponent(s.branch)}`;
+  const data = await github('GET', url);
+  sha = data.sha;
+  queue = normalizeQueue(JSON.parse(decodeBase64Unicode(data.content)));
+  render();
+  status('Loaded ' + queue.usernames.length + ' username(s).');
+}
+
+async function saveQueue() {
+  saveSettings();
+  const s = readSettings();
+  queue.updatedAt = new Date().toISOString();
+  status('Saving queue...');
+  const url = `https://api.github.com/repos/${s.owner}/${s.repo}/contents/${encodeURIComponent(s.path).replace(/%2F/g, '/')}`;
+  const body = {
+    message: 'Update manual username queue',
+    branch: s.branch,
+    content: encodeBase64Unicode(JSON.stringify(queue, null, 2)),
+    ...(sha ? { sha } : {})
+  };
+  const data = await github('PUT', url, body);
+  sha = data.content.sha;
+  status('Saved queue to GitHub.');
+}
+
+async function runWorkflow() {
+  saveSettings();
+  const s = readSettings();
+  status('Triggering workflow...');
+  const url = `https://api.github.com/repos/${s.owner}/${s.repo}/actions/workflows/${encodeURIComponent(s.workflow)}/dispatches`;
+  await github('POST', url, { ref: s.branch });
+  status('Manual workflow started.');
+}
+
+$('addBtn').onclick = () => {
+  const username = cleanUsername($('username').value);
+  if (!username) return status('Enter a username first.');
+  if (queue.usernames.some(item => item.username.toLowerCase() === username.toLowerCase())) return status('Username already exists.');
+  queue.usernames.push({ username, status: 'active', consecutiveFails: 0, cyclesCompleted: 0, totalTaskSuccesses: 0, lastRunAt: null, lastReason: null });
+  $('username').value = '';
+  render();
+  status('Added @' + username + '. Click Save To GitHub.');
+};
+$('loadBtn').onclick = () => loadQueue().catch(err => status(err.message));
+$('saveBtn').onclick = () => saveQueue().catch(err => status(err.message));
+$('runBtn').onclick = () => runWorkflow().catch(err => status(err.message));
+$('username').addEventListener('keydown', event => { if (event.key === 'Enter') $('addBtn').click(); });
+
+restoreSettings();
+render();
+</script>
+</body>
+</html>
