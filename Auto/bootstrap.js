@@ -348,6 +348,8 @@ async function createInstagramAccount(index, total) {
         username,
         password,
         email,
+        emailLogin: emailData.login || email.split('@')[0], // alias for reopening inbox
+        emailDomain: emailData.domain || email.split('@')[1],
         usageCount: 0,
         status: 'active',
         createdAt: new Date().toISOString(),
@@ -357,6 +359,8 @@ async function createInstagramAccount(index, total) {
       log('⚠️', `Result uncertain for ${username} — saving anyway (URL: ${finalUrl})`);
       return {
         username, password, email,
+        emailLogin: emailData.login || email.split('@')[0],
+        emailDomain: emailData.domain || email.split('@')[1],
         usageCount: 0, status: 'active',
         createdAt: new Date().toISOString(), lastUsedAt: null
       };

@@ -80,6 +80,69 @@ function log(emoji, msg) {
   console.log(`${emoji}  ${msg}`);
 }
 
+// ─── 1SECEMAIL OTP READER (used during takipci login challenge) ───────────────
+// If Instagram sends an OTP challenge when logging into a takipci site,
+// this opens 1secemail.com via Playwright, sets the account's stored alias,
+// and reads the 6-digit OTP from the inbox.
+async function readOTPFrom1secemail(emailLogin) {
+  if (!emailLogin) { log('⚠️', 'No emailLogin stored — cannot read OTP'); return null; }
+  log('📧', `Opening 1secemail.com to read OTP for alias: ${emailLogin}...`);
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+  });
+  const context = await browser.newContext({
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+    viewport: { width: 1280, height: 720 }
+  });
+  const emailPage = await context.newPage();
+
+  try {
+    await emailPage.goto('https://www.1secemail.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await sleep(3000);
+
+    // Set alias via Change modal
+    await emailPage.click('#change_email_btn', { timeout: 8000 }).catch(() => {});
+    await sleep(1500);
+    for (const sel of ['input#name_email', 'input[name="name"]', '.modal-body input[type="text"]', '.modal input:not([type="hidden"])']) {
+      try { await emailPage.waitForSelector(sel, { timeout: 2000 }); await emailPage.fill(sel, emailLogin); break; } catch {}
+    }
+    await emailPage.click('#change_email', { timeout: 5000 }).catch(() => {});
+    await sleep(3000);
+
+    // Poll inbox for up to 90 seconds
+    const deadline = Date.now() + 90000;
+    while (Date.now() < deadline) {
+      await emailPage.click('#refresh', { timeout: 5000 }).catch(() => {});
+      await sleep(3000);
+
+      const rows = await emailPage.$$('table tbody tr');
+      for (const row of rows) {
+        try {
+          await row.click();
+          await sleep(2000);
+          const text = await emailPage.evaluate(() => document.body.innerText);
+          const match = text.match(/\b(\d{6})\b/);
+          if (match) {
+            log('✅', `OTP from 1secemail.com (login challenge): ${match[1]}`);
+            await browser.close();
+            return match[1];
+          }
+        } catch {}
+      }
+      await sleep(5000);
+    }
+
+    log('⚠️', 'OTP not received in 90s for login challenge');
+  } catch (err) {
+    log('⚠️', `1secemail OTP reader error: ${err.message}`);
+  }
+
+  await browser.close();
+  return null;
+}
+
 function httpGet(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
@@ -454,9 +517,10 @@ async function checkLoginSuccess(page) {
   return null;
 }
 
-// ─── TURKISH SITE AUTOMATION (with screenshots + validation) ─────────────────
+// ─── TURKISH SITE AUTOMATION (with screenshots + validation + OTP handling) ───
 
-async function automateWebsite(siteUrl, username, password, postLink) {
+async function automateWebsite(siteUrl, account, postLink) {
+  const { username, password, emailLogin } = account;
   const siteName = siteUrl.replace(/https?:\/\//, '').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30);
   log('🌐', `Processing: ${siteUrl}`);
 
@@ -501,6 +565,40 @@ async function automateWebsite(siteUrl, username, password, postLink) {
     log(clicked ? '✅' : '❌', `Login button ${clicked ? 'clicked' : 'NOT FOUND'}`);
 
     await sleep(4000);
+
+    // ── INSTAGRAM OTP CHALLENGE DETECTION ────────────────────────────────────
+    // Instagram sometimes sends an OTP when it detects login from a new IP.
+    // Detect the challenge page and auto-fill using the account's stored email.
+    try {
+      const pageText = await page.evaluate(() => document.body?.innerText || '');
+      const pageUrl  = page.url();
+      const isChallenge = pageText.match(/verification code|security code|confirm.*code|enter.*code/i)
+                       || pageUrl.includes('challenge')
+                       || await page.isVisible('input[name="verificationCode"]', { timeout: 1000 }).catch(() => false)
+                       || await page.isVisible('input[aria-label*="code" i]', { timeout: 1000 }).catch(() => false);
+
+      if (isChallenge) {
+        log('🔐', `Instagram OTP challenge detected on ${siteUrl} — reading OTP from email...`);
+        await takeScreenshot(page, `03b_otp_challenge_${siteName}`);
+
+        const otp = await readOTPFrom1secemail(emailLogin);
+        if (otp) {
+          for (const sel of ['input[name="verificationCode"]', 'input[aria-label*="code" i]', 'input[maxlength="6"]', 'input[name="code"]']) {
+            try { await page.waitForSelector(sel, { timeout: 3000 }); await page.fill(sel, otp); break; } catch {}
+          }
+          await sleep(500);
+          for (const sel of ['button[type="submit"]', 'button:has-text("Confirm")', 'button:has-text("Verify")', 'button:has-text("Next")']) {
+            try { await page.click(sel); break; } catch {}
+          }
+          await sleep(4000);
+          log('✅', 'OTP entered for login challenge');
+          await takeScreenshot(page, `03c_after_otp_${siteName}`);
+        } else {
+          log('⚠️', 'Could not get OTP — login challenge may block this account on this site');
+        }
+      }
+    } catch {}
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Screenshot AFTER login attempt — KEY validation screenshot
     await takeScreenshot(page, `03_after_login_${siteName}`);
@@ -585,7 +683,7 @@ async function processAccount(account, posts) {
     const post = posts[postIndex % posts.length];
 
     try {
-      await automateWebsite(site, account.username, account.password, post);
+      await automateWebsite(site, account, post);
       completed++;
     } catch {}
 
