@@ -337,7 +337,7 @@ async function createInstagramAccount(index, total) {
   const page = await context.newPage();
 
   try {
-    await page.goto('https://www.instagram.com/accounts/signup/', {
+    await page.goto('https://www.instagram.com/accounts/emailsignup/', {
       waitUntil: 'domcontentloaded', timeout: 30000
     });
     await sleep(3000);
