@@ -23,6 +23,11 @@ const TARGET_COUNT     = parseInt(process.argv[2]) || 15; // default 15
 const RESET_MODE       = process.argv.includes('--reset');
 const DELAY_BETWEEN    = 25000; // 25 seconds between account creations
 
+// Visibly open browser on local desktop (headless: false), run headless in GitHub Actions (CI)
+const HEADLESS = process.env.HEADLESS !== undefined 
+  ? process.env.HEADLESS === 'true' 
+  : !!process.env.CI;
+
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log   = (e, m) => console.log(`${e}  ${m}`);
@@ -75,7 +80,7 @@ async function create1secemailInbox() {
   log('🔍', 'Opening 1secemail.com via Playwright...');
 
   const browser = await chromium.launch({
-    headless: true,
+    headless: HEADLESS,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
   });
   const context = await browser.newContext({
@@ -310,9 +315,8 @@ async function createInstagramAccount(index, total) {
   const { email } = emailData;
 
   const browser = await chromium.launch({
-    headless: true,
+    headless: HEADLESS,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
-
   });
   const context = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',

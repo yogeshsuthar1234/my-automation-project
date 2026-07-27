@@ -76,6 +76,11 @@ const CONFIG = {
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+// Visibly open browser on local desktop (headless: false), run headless in GitHub Actions (CI)
+const HEADLESS = process.env.HEADLESS !== undefined 
+  ? process.env.HEADLESS === 'true' 
+  : !!process.env.CI;
+
 function log(emoji, msg) {
   console.log(`${emoji}  ${msg}`);
 }
@@ -89,7 +94,7 @@ async function readOTPFrom1secemail(emailLogin) {
   log('📧', `Opening 1secemail.com to read OTP for alias: ${emailLogin}...`);
 
   const browser = await chromium.launch({
-    headless: true,
+    headless: HEADLESS,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
   });
   const context = await browser.newContext({
@@ -569,7 +574,7 @@ async function automateWebsite(siteUrl, account, postLink, siteIndex) {
   log('📸', `Screenshot slot: screenshots/${fixedSlot}.png (overwrites each run)`);
 
   const browser = await chromium.launch({
-    headless: true,
+    headless: HEADLESS,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors']
   });
   const context = await browser.newContext({ ignoreHTTPSErrors: true });
