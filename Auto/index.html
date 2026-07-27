@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Automation Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #cce7ff;
+            color: #004085;
+            border: 1px solid #b3d7ff;
+        }
+
+        .progress {
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e1e5e9;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .website-list {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .website-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .website-status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-running { background: #cce7ff; color: #004085; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-failed { background: #f8d7da; color: #721c24; }
+        
+        .post-list {
+            margin-top: 15px;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+        
+        .post-item {
+            padding: 5px;
+            font-size: 12px;
+            word-break: break-all;
+            border-bottom: 1px solid #e1e5e9;
+        }
+        
+        .post-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Instagram Automation</h1>
+        
+        <form id="automationForm">
+            <div class="form-group">
+                <label for="username">Target Instagram Username:</label>
+                <input type="text" id="username" name="username" placeholder="Enter target username (e.g., dadaji_furniture_vadodara)" required>
+            </div>
+
+            <button type="submit" id="startBtn">🚀 Start Automation</button>
+        </form>
+
+        <div class="progress" style="display: none;" id="progressSection">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="status info" id="progressText">Initializing...</div>
+        </div>
+
+        <div id="postListContainer" style="display: none;">
+            <h3>📸 Found Posts:</h3>
+            <div class="post-list" id="postList"></div>
+        </div>
+
+        <div class="website-list" id="websiteList" style="display: none;">
+            <!-- Website status will be populated here -->
+        </div>
+
+        <div id="statusMessage"></div>
+    </div>
+
+    <script>
+        document.getElementById('automationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const startBtn = document.getElementById('startBtn');
+            const statusMessage = document.getElementById('statusMessage');
+            const progressSection = document.getElementById('progressSection');
+            const websiteList = document.getElementById('websiteList');
+            const postListContainer = document.getElementById('postListContainer');
+            const postList = document.getElementById('postList');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+
+            // Disable form and show progress
+            startBtn.disabled = true;
+            startBtn.textContent = 'Running Automation...';
+            progressSection.style.display = 'block';
+            websiteList.style.display = 'block';
+            postListContainer.style.display = 'block';
+            statusMessage.innerHTML = '';
+
+
+// List of all 13 websites
+const websites = [
+      'https://takipcitime.com/login',
+      'https://mixtakip.com/login',
+      'https://birtakipci.com/member',
+    'https://fastfollow.in/member',
+    'https://takipcigen.com/login',
+    'https://takip88.com/login',
+    'https://takipcibase.com/login',
+    'https://www.takipcimx.net/login',
+    'https://www.takipciking.net/login',
+    'https://takipcigir.com/login',
+    'https://takipcifox.com/member',
+    'https://takipstar.com/login',
+    'https://takipcizen.com/login'   ,
+     'https://takipcikrali.com/login'   ,
+      'https://takipcitime.net/login',
+
+
+];
+            // Populate website list
+            websiteList.innerHTML = websites.map(website => `
+                <div class="website-item" id="website-${btoa(website).replace(/[^a-zA-Z0-9]/g, '')}">
+                    <span>${website}</span>
+                    <span class="website-status status-pending">Pending</span>
+                </div>
+            `).join('');
+
+            try {
+                // Send data to backend
+                const response = await fetch('/start-automation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: 'y@70164', // Constant password
+                        websites: websites
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to start automation');
+                }
+
+                // Set up Server-Sent Events for progress updates
+                const eventSource = new EventSource('/progress');
+
+                eventSource.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'posts_found') {
+                        // Display found posts
+                        postList.innerHTML = data.posts.map((post, index) => 
+                            `<div class="post-item">${index + 1}. ${post}</div>`
+                        ).join('');
+                    }
+                    else if (data.type === 'progress') {
+                        const progress = (data.completed / data.total) * 100;
+                        progressFill.style.width = `${progress}%`;
+                        progressText.textContent = `Processing: ${data.completed}/${data.total} websites completed`;
+                        
+                        // Update individual website status
+                        if (data.currentWebsite) {
+                            const websiteElement = document.getElementById(`website-${btoa(data.currentWebsite.url).replace(/[^a-zA-Z0-9]/g, '')}`);
+                            if (websiteElement) {
+                                const statusElement = websiteElement.querySelector('.website-status');
+                                statusElement.className = 'website-status ' + 
+                                    (data.currentWebsite.status === 'completed' ? 'status-completed' :
+                                     data.currentWebsite.status === 'running' ? 'status-running' :
+                                     data.currentWebsite.status === 'failed' ? 'status-failed' : 'status-pending');
+                                statusElement.textContent = data.currentWebsite.status.charAt(0).toUpperCase() + data.currentWebsite.status.slice(1);
+                            }
+                        }
+                    } else if (data.type === 'complete') {
+                        progressText.textContent = 'Automation completed!';
+                        statusMessage.innerHTML = `<div class="status success">✅ Automation completed successfully! Processed ${data.total} websites.</div>`;
+                        eventSource.close();
+                        startBtn.disabled = false;
+                        startBtn.textContent = '🚀 Start Automation';
+                    } else if (data.type === 'error') {
+                        statusMessage.innerHTML = `<div class="status error">❌ Error: ${data.message}</div>`;
+                        eventSource.close();
+                        startBtn.disabled = false;
+                        startBtn.textContent = '🚀 Start Automation';
+                    }
+                };
+
+                eventSource.onerror = function() {
+                    statusMessage.innerHTML = `<div class="status error">❌ Connection to server lost</div>`;
+                    startBtn.disabled = false;
+                    startBtn.textContent = '🚀 Start Automation';
+                    eventSource.close();
+                };
+
+            } catch (error) {
+                statusMessage.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                startBtn.disabled = false;
+                startBtn.textContent = '🚀 Start Automation';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+# Python virtual env files (not needed on GitHub)
+DLLs/
+Doc/
+Lib/
+Scripts/
+Tools/
+include/
+libs/
+tcl/
+*.dll
+*.exe
+*.txt
+error.png
+NEWS.txt
+LICENSE.txt
+
+# Node
+Auto/node_modules/
+Auto/.env
+
+# Don't commit real accounts (keep local only)
+# accounts.json   ← comment this out if you want to commit starter accounts
+
+# Logs
+*.log
+*.png

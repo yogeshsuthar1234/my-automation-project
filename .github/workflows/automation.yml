@@ -1,0 +1,82 @@
+name: 🤖 Instagram AI Automation
+
+on:
+  # Run automatically every 2 hours
+  schedule:
+    - cron: '0 */2 * * *'
+  
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      create_accounts:
+        description: 'Create new Instagram accounts? (yes/no)'
+        required: false
+        default: 'yes'
+
+jobs:
+  automate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      # 1. Get your code
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. Install dependencies
+      - name: 📦 Install dependencies
+        working-directory: ./Auto
+        run: npm install
+
+      # 4. Install Playwright browsers (Chromium only)
+      - name: 🌐 Install Playwright Chromium
+        working-directory: ./Auto
+        run: npx playwright install chromium --with-deps
+
+      # 5. Restore saved accounts from previous runs
+      - name: 📂 Restore accounts cache
+        uses: actions/cache@v3
+        with:
+          path: Auto/accounts.json
+          key: instagram-accounts-${{ github.run_id }}
+          restore-keys: |
+            instagram-accounts-
+
+      # 6. Run the AI agent
+      - name: 🤖 Run AI Agent
+        working-directory: ./Auto
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # Run for max 100 minutes (GitHub Actions timeout is 120)
+          timeout 6000 node agent.js || true
+        
+      # 7. Save newly created accounts for next run
+      - name: 💾 Save accounts for next run
+        uses: actions/cache@v3
+        with:
+          path: Auto/accounts.json
+          key: instagram-accounts-${{ github.run_id }}
+
+      # 8. Show summary
+      - name: 📊 Show accounts summary
+        working-directory: ./Auto
+        run: |
+          if [ -f accounts.json ]; then
+            echo "=== Saved Accounts ==="
+            cat accounts.json | python3 -c "
+          import json, sys
+          accounts = json.load(sys.stdin)
+          print(f'Total accounts: {len(accounts)}')
+          for acc in accounts:
+              print(f'  - {acc[\"username\"]} (created: {acc.get(\"createdAt\", \"unknown\")})')
+          "
+          else
+            echo "No accounts.json found"
+          fi
