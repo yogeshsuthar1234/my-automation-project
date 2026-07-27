@@ -4,9 +4,10 @@
   "description": "AI-powered Instagram automation agent",
   "main": "agent.js",
   "scripts": {
-    "start": "node agent.js",
-    "agent": "node agent.js",
-    "old": "node new.js"
+    "start":     "node agent.js",
+    "agent":     "node agent.js",
+    "bootstrap": "node bootstrap.js",
+    "reset":     "node bootstrap.js 15 --reset"
   },
   "keywords": [],
   "author": "",

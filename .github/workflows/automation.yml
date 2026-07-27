@@ -5,86 +5,223 @@ on:
   schedule:
     - cron: '0 */2 * * *'
   
-  # Allow manual trigger from GitHub UI
+  # Manual trigger with options
   workflow_dispatch:
     inputs:
-      create_accounts:
-        description: 'Create new Instagram accounts? (yes/no)'
-        required: false
-        default: 'yes'
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full          # Phase 1 (create accounts) + Phase 2 (automation)
+          - bootstrap     # Phase 1 only — just create fresh accounts
+          - automate      # Phase 2 only — run automation with existing accounts
 
 jobs:
-  automate:
+
+  # ═══════════════════════════════════════════════════════════════════
+  # PHASE 1 — Create 15 Fresh Instagram Accounts
+  # ═══════════════════════════════════════════════════════════════════
+  bootstrap:
+    name: 🏭 Phase 1 — Create Fresh Accounts
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 90
+    # Run if: mode is 'full' or 'bootstrap', or it's a scheduled run
+    if: >
+      github.event_name == 'schedule' ||
+      github.event.inputs.mode == 'full' ||
+      github.event.inputs.mode == 'bootstrap'
+    
+    outputs:
+      accounts_ready: ${{ steps.check.outputs.ready }}
 
     steps:
-      # 1. Get your code
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      # 2. Setup Node.js
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 3. Install dependencies
       - name: 📦 Install dependencies
         working-directory: ./Auto
         run: npm install
 
-      # 4. Install Playwright browsers (Chromium only)
       - name: 🌐 Install Playwright Chromium
         working-directory: ./Auto
         run: npx playwright install chromium --with-deps
 
-      # 5. Restore saved accounts from previous runs
+      # Restore previously saved accounts (skip if all expired)
       - name: 📂 Restore accounts cache
+        id: cache
         uses: actions/cache@v3
         with:
           path: Auto/accounts.json
-          key: instagram-accounts-${{ github.run_id }}
+          key: instagram-accounts-v2-${{ github.run_id }}
           restore-keys: |
-            instagram-accounts-
+            instagram-accounts-v2-
 
-      # 6. Run the AI agent
-      - name: 🤖 Run AI Agent
+      # Check how many active accounts we have
+      - name: 🔍 Check active accounts
+        id: check
+        working-directory: ./Auto
+        run: |
+          if [ -f accounts.json ]; then
+            ACTIVE=$(node -e "
+              const a = require('./accounts.json');
+              const active = a.filter(x => x.status === 'active').length;
+              console.log(active);
+            ")
+            echo "Active accounts: $ACTIVE"
+            echo "ready=$ACTIVE" >> $GITHUB_OUTPUT
+          else
+            echo "No accounts.json found"
+            echo "ready=0" >> $GITHUB_OUTPUT
+          fi
+
+      # Create fresh accounts if we have fewer than 10 active
+      - name: 🏭 Create fresh Instagram accounts
+        working-directory: ./Auto
+        run: |
+          ACTIVE=${{ steps.check.outputs.ready }}
+          echo "Currently have $ACTIVE active accounts"
+          
+          if [ "$ACTIVE" -lt "10" ]; then
+            echo "Need more accounts — running bootstrap (target: 15)..."
+            # --reset clears all expired accounts first
+            timeout 5000 node bootstrap.js 15 --reset || true
+          else
+            echo "✅ Already have $ACTIVE active accounts — skipping bootstrap"
+          fi
+
+      # Show account summary
+      - name: 📊 Account summary
+        working-directory: ./Auto
+        if: always()
+        run: |
+          if [ -f accounts.json ]; then
+            node -e "
+              const accounts = require('./accounts.json');
+              const active = accounts.filter(a => a.status === 'active');
+              console.log('=== ACCOUNT POOL ===');
+              console.log('Total:', accounts.length);
+              console.log('Active:', active.length);
+              active.forEach((a, i) => console.log((i+1) + '. ' + a.username + ' / ' + a.password));
+            "
+          fi
+
+      # Save accounts for Phase 2
+      - name: 💾 Save accounts
+        uses: actions/cache@v3
+        with:
+          path: Auto/accounts.json
+          key: instagram-accounts-v2-${{ github.run_id }}
+
+
+  # ═══════════════════════════════════════════════════════════════════
+  # PHASE 2 — Run Automation with Fresh Accounts
+  # ═══════════════════════════════════════════════════════════════════
+  automate:
+    name: 🤖 Phase 2 — Run Automation
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    # Wait for Phase 1 to finish (unless running automate-only mode)
+    needs: bootstrap
+    if: >
+      always() && (
+        github.event_name == 'schedule' ||
+        github.event.inputs.mode == 'full' ||
+        github.event.inputs.mode == 'automate'
+      )
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install dependencies
+        working-directory: ./Auto
+        run: npm install
+
+      - name: 🌐 Install Playwright Chromium
+        working-directory: ./Auto
+        run: npx playwright install chromium --with-deps
+
+      # Get accounts saved by Phase 1
+      - name: 📂 Restore accounts from Phase 1
+        uses: actions/cache@v3
+        with:
+          path: Auto/accounts.json
+          key: instagram-accounts-v2-${{ github.run_id }}
+          restore-keys: |
+            instagram-accounts-v2-
+
+      # Verify we have accounts before running
+      - name: ✅ Verify accounts available
+        working-directory: ./Auto
+        run: |
+          if [ -f accounts.json ]; then
+            ACTIVE=$(node -e "
+              const a = require('./accounts.json');
+              console.log(a.filter(x => x.status === 'active').length);
+            ")
+            echo "Active accounts available: $ACTIVE"
+            if [ "$ACTIVE" -eq "0" ]; then
+              echo "❌ No active accounts! Cannot run automation."
+              exit 1
+            fi
+          else
+            echo "❌ accounts.json not found!"
+            exit 1
+          fi
+
+      # Run the AI automation agent
+      - name: 🤖 Run AI Automation Agent
         working-directory: ./Auto
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           timeout 6000 node agent.js || true
-        
-      # 7. Upload screenshots as artifact — view to validate login success
+
+      # Upload screenshots for validation
       - name: 📸 Upload screenshots
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: screenshots-${{ github.run_number }}
+          name: screenshots-run-${{ github.run_number }}
           path: Auto/screenshots/
           retention-days: 7
 
-      # 8. Save newly created accounts for next run
-      - name: 💾 Save accounts for next run
+      # Save updated accounts (with updated usageCount)
+      - name: 💾 Save updated accounts
         uses: actions/cache@v3
         with:
           path: Auto/accounts.json
-          key: instagram-accounts-${{ github.run_id }}
+          key: instagram-accounts-v2-${{ github.run_id }}
 
-      # 8. Show summary
-      - name: 📊 Show accounts summary
+      # Final summary
+      - name: 📊 Final summary
         working-directory: ./Auto
+        if: always()
         run: |
           if [ -f accounts.json ]; then
-            echo "=== Saved Accounts ==="
-            cat accounts.json | python3 -c "
-          import json, sys
-          accounts = json.load(sys.stdin)
-          print(f'Total accounts: {len(accounts)}')
-          for acc in accounts:
-              print(f'  - {acc[\"username\"]} (created: {acc.get(\"createdAt\", \"unknown\")})')
-          "
-          else
-            echo "No accounts.json found"
+            node -e "
+              const accounts = require('./accounts.json');
+              const active    = accounts.filter(a => a.status === 'active').length;
+              const exhausted = accounts.filter(a => a.status === 'exhausted').length;
+              console.log('=== FINAL POOL STATUS ===');
+              console.log('Active:   ', active);
+              console.log('Exhausted:', exhausted);
+              console.log('Total:    ', accounts.length);
+              accounts.forEach((a, i) => {
+                const bar = '▓'.repeat(a.usageCount) + '░'.repeat(Math.max(0, 3 - a.usageCount));
+                console.log((i+1) + '. [' + bar + '] ' + a.status.padEnd(10) + ' ' + a.username);
+              });
+            "
           fi
