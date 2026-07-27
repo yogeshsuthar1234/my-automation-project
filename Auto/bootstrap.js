@@ -66,24 +66,58 @@ function httpGet(url) {
   });
 }
 
-// Provider 1: 1secmail.com — works with Instagram OTPs
+// Provider 1: 1secmail.com
 async function create1secmailInbox() {
   try {
+    log('🔍', 'Trying 1secmail.com...');
     const list = await httpGet('https://www.1secmail.com/api/v1/?action=genRandomMailbox&count=1');
+    log('🔍', `1secmail response: ${JSON.stringify(list).slice(0, 100)}`);
     if (Array.isArray(list) && list[0]) {
       const [login, domain] = list[0].split('@');
       log('📧', `1secmail inbox: ${list[0]}`);
       return { email: list[0], provider: '1secmail', login, domain };
     }
+    log('⚠️', `1secmail returned invalid response: ${JSON.stringify(list)}`);
   } catch (err) {
     log('⚠️', `1secmail failed: ${err.message}`);
   }
   return null;
 }
 
-// Provider 2: Guerrilla Mail — fallback
+// Provider 2: Mailnesia.com (no API key needed)
+async function createMailnesiaInbox() {
+  try {
+    log('🔍', 'Trying mailnesia.com...');
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    const login = Array.from({length: 10}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const email = `${login}@mailnesia.com`;
+    log('📧', `Mailnesia inbox: ${email}`);
+    return { email, provider: 'mailnesia', login, domain: 'mailnesia.com' };
+  } catch (err) {
+    log('⚠️', `Mailnesia failed: ${err.message}`);
+  }
+  return null;
+}
+
+// Provider 3: dispostable.com
+async function createDispostableInbox() {
+  try {
+    log('🔍', 'Trying dispostable.com...');
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
+    const login = Array.from({length: 10}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const email = `${login}@dispostable.com`;
+    log('📧', `Dispostable inbox: ${email}`);
+    return { email, provider: 'dispostable', login, domain: 'dispostable.com' };
+  } catch (err) {
+    log('⚠️', `Dispostable failed: ${err.message}`);
+  }
+  return null;
+}
+
+// Provider 4: Guerrilla Mail — last resort
 async function createGuerrillaInbox() {
   try {
+    log('🔍', 'Trying guerrillamail.com...');
     const data = await httpGet('https://api.guerrillamail.com/ajax.php?f=get_email_address');
     if (data.email_addr) {
       log('📧', `Guerrilla inbox: ${data.email_addr}`);
@@ -96,13 +130,21 @@ async function createGuerrillaInbox() {
 }
 
 async function createTempEmail() {
-  // Try 1secmail first (Instagram delivers OTPs here)
-  const inbox = await create1secmailInbox();
-  if (inbox) return inbox;
-  // Fallback to Guerrilla
-  return await createGuerrillaInbox();
+  // Try providers in order — 1secmail and mailnesia more likely to receive Instagram OTPs
+  const inbox = await create1secmailInbox()
+             || await createMailnesiaInbox()
+             || await createDispostableInbox()
+             || await createGuerrillaInbox();
+
+  if (inbox) {
+    log('✅', `Using provider: ${inbox.provider} → ${inbox.email}`);
+  } else {
+    log('❌', 'All email providers failed!');
+  }
+  return inbox;
 }
 
+// Read OTP from 1secmail inbox
 // Read OTP from 1secmail inbox
 async function getOTPFrom1secmail(login, domain, maxWait = 120000) {
   const deadline = Date.now() + maxWait;
@@ -117,10 +159,44 @@ async function getOTPFrom1secmail(login, domain, maxWait = 120000) {
         );
         const body = (full.body || full.htmlBody || full.textBody || JSON.stringify(full));
         const match = body.match(/\b(\d{6})\b/);
-        if (match) {
-          log('✅', `OTP from 1secmail: ${match[1]}`);
-          return match[1];
-        }
+        if (match) { log('✅', `OTP from 1secmail: ${match[1]}`); return match[1]; }
+      }
+    } catch {}
+    await sleep(5000);
+  }
+  return null;
+}
+
+// Read OTP from Mailnesia inbox
+async function getOTPFromMailnesia(login, maxWait = 120000) {
+  const deadline = Date.now() + maxWait;
+  while (Date.now() < deadline) {
+    try {
+      // Mailnesia RSS feed — public, no auth needed
+      const rss = await new Promise((resolve, reject) => {
+        https.get(`https://mailnesia.com/mailbox/${login}?rss`, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+          let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(d));
+        }).on('error', reject);
+      });
+      const match = rss.match(/\b(\d{6})\b/);
+      if (match) { log('✅', `OTP from Mailnesia: ${match[1]}`); return match[1]; }
+    } catch {}
+    await sleep(5000);
+  }
+  return null;
+}
+
+// Read OTP from Dispostable inbox
+async function getOTPFromDispostable(login, maxWait = 120000) {
+  const deadline = Date.now() + maxWait;
+  while (Date.now() < deadline) {
+    try {
+      const data = await httpGet(`https://www.dispostable.com/inbox/${login}/?format=json`);
+      const messages = Array.isArray(data) ? data : (data.messages || []);
+      for (const msg of messages) {
+        const body = (msg.body_text || msg.body_html || JSON.stringify(msg));
+        const match = body.match(/\b(\d{6})\b/);
+        if (match) { log('✅', `OTP from Dispostable: ${match[1]}`); return match[1]; }
       }
     } catch {}
     await sleep(5000);
@@ -142,10 +218,7 @@ async function getOTPFromGuerrilla(sid, maxWait = 120000) {
         );
         const body = (full.mail_body || '') + (full.mail_excerpt || '');
         const match = body.match(/\b(\d{6})\b/);
-        if (match) {
-          log('✅', `OTP from Guerrilla: ${match[1]}`);
-          return match[1];
-        }
+        if (match) { log('✅', `OTP from Guerrilla: ${match[1]}`); return match[1]; }
       }
     } catch {}
     await sleep(5000);
@@ -153,14 +226,13 @@ async function getOTPFromGuerrilla(sid, maxWait = 120000) {
   return null;
 }
 
-// Universal OTP reader — picks right provider
+// Universal OTP reader — routes to correct provider
 async function getOTPFromEmail(emailData, maxWait = 120000) {
-  log('⏳', `Waiting for Instagram OTP on ${emailData.email} (up to 2 min)...`);
-  if (emailData.provider === '1secmail') {
-    return await getOTPFrom1secmail(emailData.login, emailData.domain, maxWait);
-  } else {
-    return await getOTPFromGuerrilla(emailData.sid, maxWait);
-  }
+  log('⏳', `Waiting for OTP on ${emailData.email} via [${emailData.provider}]...`);
+  if (emailData.provider === '1secmail')    return await getOTPFrom1secmail(emailData.login, emailData.domain, maxWait);
+  if (emailData.provider === 'mailnesia')   return await getOTPFromMailnesia(emailData.login, maxWait);
+  if (emailData.provider === 'dispostable') return await getOTPFromDispostable(emailData.login, maxWait);
+  return await getOTPFromGuerrilla(emailData.sid, maxWait); // guerrilla fallback
 }
 
 // ─── CREATE ONE INSTAGRAM ACCOUNT ────────────────────────────────────────────
