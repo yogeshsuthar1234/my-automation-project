@@ -165,37 +165,62 @@ async function getOTPFrom1secemail(page, maxWait = 120000) {
     try {
       // Click Refresh to fetch latest emails
       await page.click('#refresh', { timeout: 5000 }).catch(() => {});
-      await sleep(3000);
+      await sleep(4000); // Give page time to update
 
-      // Check for email rows in inbox
-      const rows = await page.$$('table tbody tr, .mail-list .mail-item, [class*="mail"] tr');
-      if (rows.length > 0) {
-        log('📬', `Found ${rows.length} email(s) in inbox — checking for OTP...`);
+      // ── KEY FIX: Read page text DIRECTLY — OTP is in the subject line
+      // "415098 is your Instagram code" is visible WITHOUT clicking the row
+      const pageText = await page.evaluate(() => document.body.innerText || '');
 
-        for (const row of rows) {
+      // Log what we see (first 200 chars) for debugging
+      log('🔍', `Inbox text: ${pageText.slice(0, 200).replace(/\n/g, ' ')}`);
+
+      // Try specific Instagram subject pattern first (most reliable)
+      let match = pageText.match(/(\d{6})\s+is\s+your\s+Instagram\s+code/i)
+               || pageText.match(/Instagram\s+code[:\s]+(\d{6})/i)
+               || pageText.match(/code[:\s]+(\d{6})/i);
+
+      // Fallback: also try clicking any visible email rows
+      if (!match) {
+        const rows = await page.$$('table tr, tr, [class*="email-row"], [class*="mail-row"]');
+        if (rows.length > 1) { // >1 because header row counts
+          log('📬', `Found ${rows.length} table rows — clicking first email row...`);
           try {
-            await row.click();
+            await rows[1].click(); // rows[0] = header, rows[1] = first email
             await sleep(2000);
-
-            // Read the full page text (OTP appears in subject or body)
-            const pageText = await page.evaluate(() => document.body.innerText);
-            const match = pageText.match(/\b(\d{6})\b/);
-            if (match) {
-              log('✅', `OTP from 1secemail.com: ${match[1]}`);
-              return match[1];
-            }
+            const bodyText = await page.evaluate(() => document.body.innerText || '');
+            match = bodyText.match(/(\d{6})\s+is\s+your\s+Instagram\s+code/i)
+                 || bodyText.match(/Instagram.*?(\d{6})/i)
+                 || bodyText.match(/\b(\d{6})\b/);
           } catch {}
         }
-      } else {
-        log('⏳', 'Inbox empty — waiting for Instagram OTP email...');
       }
+
+      if (match) {
+        log('✅', `OTP from 1secemail.com: ${match[1]}`);
+        return match[1];
+      }
+
+      log('⏳', 'OTP not yet visible — waiting...');
+
     } catch (err) {
       log('⚠️', `Inbox poll error: ${err.message}`);
     }
     await sleep(5000);
   }
 
-  log('❌', 'OTP timeout — Instagram did not send OTP to 1secemail.com');
+  // ── Save screenshot before giving up — helps debug WHY it failed
+  try {
+    const fs = require('fs');
+    const screenshotDir = require('path').join(__dirname, 'screenshots');
+    if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
+    const screenshotPath = require('path').join(screenshotDir, `otp_timeout_inbox_${Date.now()}.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    log('📸', `Timeout screenshot saved: ${screenshotPath}`);
+  } catch (e) {
+    log('⚠️', `Could not save timeout screenshot: ${e.message}`);
+  }
+
+  log('❌', 'OTP timeout — check timeout screenshot to see what inbox looked like');
   return null;
 }
 

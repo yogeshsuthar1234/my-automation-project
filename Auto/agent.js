@@ -115,26 +115,51 @@ async function readOTPFrom1secemail(emailLogin) {
     const deadline = Date.now() + 90000;
     while (Date.now() < deadline) {
       await emailPage.click('#refresh', { timeout: 5000 }).catch(() => {});
-      await sleep(3000);
+      await sleep(4000);
 
-      const rows = await emailPage.$$('table tbody tr');
-      for (const row of rows) {
-        try {
-          await row.click();
-          await sleep(2000);
-          const text = await emailPage.evaluate(() => document.body.innerText);
-          const match = text.match(/\b(\d{6})\b/);
-          if (match) {
-            log('✅', `OTP from 1secemail.com (login challenge): ${match[1]}`);
-            await browser.close();
-            return match[1];
-          }
-        } catch {}
+      // Read page text directly — OTP is visible in subject: "415098 is your Instagram code"
+      const pageText = await emailPage.evaluate(() => document.body.innerText || '');
+      log('🔍', `Inbox text: ${pageText.slice(0, 200).replace(/\n/g, ' ')}`);
+
+      let match = pageText.match(/(\d{6})\s+is\s+your\s+Instagram\s+code/i)
+               || pageText.match(/Instagram\s+code[:\s]+(\d{6})/i)
+               || pageText.match(/code[:\s]+(\d{6})/i);
+
+      // Fallback: try clicking email rows
+      if (!match) {
+        const rows = await emailPage.$$('table tr, tr');
+        if (rows.length > 1) {
+          try {
+            await rows[1].click();
+            await sleep(2000);
+            const bodyText = await emailPage.evaluate(() => document.body.innerText || '');
+            match = bodyText.match(/(\d{6})\s+is\s+your\s+Instagram\s+code/i)
+                 || bodyText.match(/Instagram.*?(\d{6})/i)
+                 || bodyText.match(/\b(\d{6})\b/);
+          } catch {}
+        }
       }
+
+      if (match) {
+        log('✅', `OTP from 1secemail.com (login challenge): ${match[1]}`);
+        await browser.close();
+        return match[1];
+      }
+
+      log('⏳', 'OTP not yet visible — waiting...');
       await sleep(5000);
     }
 
-    log('⚠️', 'OTP not received in 90s for login challenge');
+    // Save screenshot before giving up
+    try {
+      const screenshotDir = path.join(__dirname, 'screenshots');
+      if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
+      const sp = path.join(screenshotDir, `otp_login_challenge_timeout_${Date.now()}.png`);
+      await emailPage.screenshot({ path: sp, fullPage: true });
+      log('📸', `Timeout screenshot saved: screenshots/${path.basename(sp)}`);
+    } catch {}
+
+    log('⚠️', 'OTP not received in 90s for login challenge — check screenshot');
   } catch (err) {
     log('⚠️', `1secemail OTP reader error: ${err.message}`);
   }
