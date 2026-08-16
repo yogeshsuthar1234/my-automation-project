@@ -1,7 +1,17 @@
 {
   "password": "y@70164",
   "nextIndex": 0,
-  "usernames": [],
+  "usernames": [
+    {
+      "username": "urbaneye711",
+      "status": "active",
+      "consecutiveFails": 0,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
+      "lastRunAt": null,
+      "lastReason": null
+    }
+  ],
   "removed": [
     {
       "username": "urbaneye712026",
@@ -36,5 +46,5 @@
       "lastReason": "otp_required"
     }
   ],
-  "updatedAt": "2026-08-16T16:43:47.839Z"
+  "updatedAt": "2026-08-16T18:34:15.236Z"
 }
