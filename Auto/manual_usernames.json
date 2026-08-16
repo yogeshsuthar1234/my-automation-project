@@ -5,11 +5,13 @@
     {
       "username": "urbaneye711",
       "status": "active",
-      "consecutiveFails": 0,
+      "consecutiveFails": 4,
       "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
+      "totalTaskSuccesses": 44,
+      "lastRunAt": "2026-08-16T20:13:25.110Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-16T20:13:25.110Z",
+      "lastReason": "login_failed"
     }
   ],
   "removed": [
@@ -46,5 +48,5 @@
       "lastReason": "otp_required"
     }
   ],
-  "updatedAt": "2026-08-16T18:34:15.236Z"
+  "updatedAt": "2026-08-16T20:13:25.110Z"
 }
