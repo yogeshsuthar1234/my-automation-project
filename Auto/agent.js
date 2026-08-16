@@ -694,9 +694,17 @@ async function isAccountSuspendedPage(page) {
     || /your account is suspended|account has been suspended|start appeal|appealing account|provide your phone, ID and selfie/i.test(text);
 }
 async function isOtpChallengePage(page) {
+  // The real member panel and an Instagram verification challenge can't
+  // both be showing. If the panel's own tool links are visible, this is
+  // definitely not a challenge page — short-circuit before the keyword
+  // check below, which otherwise false-positives on ordinary dashboard
+  // copy like "Enter your coupon code" (matches enter.*code).
+  const panelReady = await page.isVisible('a[href="/tools/send-like"], a[href="/tools/send-follower"]', { timeout: 500 }).catch(() => false);
+  if (panelReady) return false;
+
   const text = await page.evaluate(() => document.body?.innerText || '').catch(() => '');
   const url = page.url();
-  const singleCodeInput = await page.isVisible('input[name="verificationCode"], input[aria-label*="code" i], input[name="code"], input[maxlength="6"]', { timeout: 800 }).catch(() => false);
+  const singleCodeInput = await page.isVisible('input[name="verificationCode"], input[aria-label*="code" i], input[name="code"][maxlength="6"], input[maxlength="6"][inputmode="numeric"]', { timeout: 800 }).catch(() => false);
   const digitInputCount = await page.locator('input').evaluateAll(inputs => inputs.filter(input => {
     const style = window.getComputedStyle(input);
     const rect = input.getBoundingClientRect();
@@ -704,8 +712,11 @@ async function isOtpChallengePage(page) {
     return type !== 'hidden' && style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0 && (input.maxLength === 1 || rect.width < 90);
   }).length).catch(() => 0);
 
-  return /bloks\/verification|challenge|verification/i.test(url)
-    || /verification code sent|enter the 6-digit code|security code|confirm.*code|enter.*code|confirm your identity|logging in/i.test(text)
+  // "enter.*code" / "confirm.*code" were too broad and matched ordinary
+  // "Enter your coupon code" copy on the real dashboard. Anchor on the
+  // more specific phrasing Instagram's own challenge screen actually uses.
+  return /bloks\/verification|challenge/i.test(url)
+    || /verification code sent|enter the 6-digit code|confirm your identity|try another method|log in with another account/i.test(text)
     || singleCodeInput
     || digitInputCount >= 6;
 }
@@ -894,6 +905,20 @@ async function waitForAndHandleLoginChallenge(page, account, siteUrl) {
   return null;
 }
 
+// Turkish sites render this button's text in ALL CAPS via CSS text-transform,
+// and the Turkish dotted "İ" doesn't case-fold to plain "i" the way JS/Playwright's
+// case-insensitive text match expects — so a fixed-text locator like
+// button:has-text("Gönderiyi Bul") never matches "GÖNDERİYİ BUL". Some sites
+// also render this in English entirely (e.g. "Find User"). Instead of matching
+// text, click the submit control inside the same form as the given input.
+async function clickFormSubmitNear(page, inputSelector) {
+  const submit = page.locator(inputSelector)
+    .locator('xpath=ancestor::form[1]')
+    .locator('button[type="submit"], input[type="submit"]')
+    .first();
+  await submit.click({ timeout: 12000 });
+}
+
 async function automateWebsite(siteUrl, account, postLink, siteIndex) {
   const { username, password, emailLogin } = account;
   // Fixed short name for this site slot (e.g. site_03_takipcitime)
@@ -985,7 +1010,7 @@ async function automateWebsite(siteUrl, account, postLink, siteIndex) {
       await page.click('a[href="/tools/send-like"]', { timeout: 12000 });
       await sleep(700);
       await page.fill('input[name="mediaUrl"]', postLink);
-      await page.click('button:has-text("GÃ¶nderiyi Bul")');
+      await clickFormSubmitNear(page, 'input[name="mediaUrl"]');
       await sleep(CONFIG.SITE_RESPONSE_WAIT);
       await takeScreenshot(page, `04_likes_form_${siteName}`);
       await page.fill('input[name="adet"]', '5000');
@@ -1006,7 +1031,7 @@ async function automateWebsite(siteUrl, account, postLink, siteIndex) {
       await page.click('a[href="/tools/send-follower"]', { timeout: 12000 });
       await sleep(700);
       await page.fill('input[name="username"]', CONFIG.TARGET_INSTAGRAM);
-      await page.click('button:has-text("KullanÄ±cÄ±yÄ± Bul")');
+      await clickFormSubmitNear(page, 'input[name="username"]');
       await sleep(CONFIG.SITE_RESPONSE_WAIT);
       await page.fill('input[name="adet"]', '49999');
       await page.click('#formTakipSubmitButton');
@@ -1151,7 +1176,8 @@ module.exports = {
   automateWebsite,
   processAccount,
   printPoolStatus,
-  checkLoginSuccess
+  checkLoginSuccess,
+  isOtpChallengePage
 };
 
 if (process.env.AGENT_IMPORT_ONLY !== 'true') {
