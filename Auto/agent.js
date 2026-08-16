@@ -655,21 +655,31 @@ async function takeScreenshot(page, label) {
 
 // Login validator
 async function checkLoginSuccess(page) {
-  const url       = page.url();
-  const title     = await page.title().catch(() => '');
-  const bodyText  = await page.evaluate(() => document.body?.innerText?.slice(0, 400) || '').catch(() => '');
+  const url = page.url();
+  const title = await page.title().catch(() => '');
 
+  // Authoritative signal: the actual panel links this bot needs next.
+  // A keyword match alone can pass on an interstitial page (e.g. a still-
+  // resolving Instagram verification screen) that happens to contain a
+  // nav word like "panel" without the real member panel being loaded.
+  const panelReady = await page.isVisible('a[href="/tools/send-like"], a[href="/tools/send-follower"]', { timeout: 1500 }).catch(() => false);
+  if (panelReady) {
+    log('âœ…', `LOGIN SUCCESS â€” panel link visible â€” URL: ${url}`);
+    return true;
+  }
+
+  const bodyText  = await page.evaluate(() => document.body?.innerText?.slice(0, 400) || '').catch(() => '');
   const successWords = ['tools', 'dashboard', 'panel', 'member', 'hesap', 'profil', 'logout', 'Ã§Ä±kÄ±ÅŸ'];
   const failWords    = ['login', 'giriÅŸ', 'sign in', 'hata', 'error', 'wrong', 'incorrect', 'invalid'];
 
   const all = (url + title + bodyText).toLowerCase();
-  if (successWords.some(w => all.includes(w))) {
-    log('âœ…', `LOGIN SUCCESS â€” URL: ${url}`);
-    return true;
-  }
   if (failWords.some(w => all.includes(w))) {
     log('âŒ', `LOGIN FAILED â€” still on login page. URL: ${url} | Title: ${title}`);
     return false;
+  }
+  if (successWords.some(w => all.includes(w))) {
+    log('âš ï¸', `LOGIN UNCERTAIN â€” keyword match but panel link not visible yet â€” URL: ${url}`);
+    return null;
   }
   log('âš ï¸', `LOGIN UNCERTAIN â€” URL: ${url} | Title: ${title}`);
   return null;
@@ -1140,7 +1150,8 @@ module.exports = {
   getInstagramPosts,
   automateWebsite,
   processAccount,
-  printPoolStatus
+  printPoolStatus,
+  checkLoginSuccess
 };
 
 if (process.env.AGENT_IMPORT_ONLY !== 'true') {
