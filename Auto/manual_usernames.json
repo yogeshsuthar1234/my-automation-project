@@ -3,35 +3,37 @@
   "nextIndex": 1,
   "usernames": [
     {
+      "username": "hareshwiidv",
       "status": "active",
-      "consecutiveFails": 3,
+      "consecutiveFails": 5,
       "cyclesCompleted": 0,
       "totalTaskSuccesses": 39,
-      "username": "hareshwiidv",
-      "lastRunAt": "2026-08-17T10:53:36.166Z",
+      "lastRunAt": "2026-08-17T14:00:10.131Z",
       "lastSuccessAt": null,
-      "lastFailureAt": "2026-08-17T10:53:36.166Z",
-      "lastReason": "login_failed"
+      "lastFailureAt": "2026-08-17T14:00:10.131Z",
+      "lastReason": "account_suspended"
     },
     {
-      "status": "active",
-      "consecutiveFails": 2,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 9,
       "username": "pateldumm336",
-      "lastRunAt": "2026-08-17T10:26:54.118Z",
+      "status": "active",
+      "consecutiveFails": 4,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 33,
+      "lastRunAt": "2026-08-17T13:42:08.822Z",
       "lastSuccessAt": null,
-      "lastFailureAt": "2026-08-17T10:26:54.118Z",
+      "lastFailureAt": "2026-08-17T13:42:08.822Z",
       "lastReason": "login_failed"
     },
     {
       "username": "halku19757",
       "status": "active",
-      "consecutiveFails": 0,
+      "consecutiveFails": 2,
       "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
+      "totalTaskSuccesses": 9,
+      "lastRunAt": "2026-08-17T13:59:57.111Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-17T13:59:57.111Z",
+      "lastReason": "login_failed"
     }
   ],
   "removed": [
@@ -84,5 +86,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T12:12:52.617Z"
+  "updatedAt": "2026-08-17T14:00:10.131Z"
 }
