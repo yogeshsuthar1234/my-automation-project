@@ -1,17 +1,7 @@
 {
   "password": "y@70164",
   "nextIndex": 0,
-  "usernames": [
-    {
-      "username": "halku19757",
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
-    }
-  ],
+  "usernames": [],
   "removed": [
     {
       "username": "urbaneye712026",
@@ -84,7 +74,15 @@
       "cyclesCompleted": 0,
       "totalTaskSuccesses": 0,
       "lastReason": "account_suspended"
+    },
+    {
+      "username": "halku19757",
+      "removedAt": "2026-08-17T15:17:03.913Z",
+      "reason": "consecutive_failed_cycles_7",
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
+      "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T15:06:20.623Z"
+  "updatedAt": "2026-08-17T15:17:03.913Z"
 }
