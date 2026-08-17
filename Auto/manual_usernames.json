@@ -12,7 +12,16 @@
       "lastReason": null
     },
     {
+      "status": "active",
+      "consecutiveFails": 0,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
       "username": "hare.shwiidv",
+      "lastRunAt": null,
+      "lastReason": null
+    },
+    {
+      "username": "jask.irat8547",
       "status": "active",
       "consecutiveFails": 0,
       "cyclesCompleted": 0,
@@ -71,5 +80,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T06:59:25.966Z"
+  "updatedAt": "2026-08-17T08:25:40.919Z"
 }
