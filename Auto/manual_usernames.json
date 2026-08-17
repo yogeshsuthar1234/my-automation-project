@@ -1,24 +1,28 @@
 {
   "password": "y@70164",
-  "nextIndex": 0,
+  "nextIndex": 1,
   "usernames": [
     {
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
       "username": "hareshwiidv",
-      "lastRunAt": null,
-      "lastReason": null
+      "status": "active",
+      "consecutiveFails": 3,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 39,
+      "lastRunAt": "2026-08-17T10:53:36.166Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-17T10:53:36.166Z",
+      "lastReason": "login_failed"
     },
     {
       "username": "pateldumm336",
       "status": "active",
-      "consecutiveFails": 0,
+      "consecutiveFails": 2,
       "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
+      "totalTaskSuccesses": 9,
+      "lastRunAt": "2026-08-17T10:26:54.118Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-17T10:26:54.118Z",
+      "lastReason": "login_failed"
     }
   ],
   "removed": [
@@ -71,5 +75,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T09:09:11.104Z"
+  "updatedAt": "2026-08-17T10:53:36.166Z"
 }
