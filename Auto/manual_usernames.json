@@ -3,7 +3,16 @@
   "nextIndex": 0,
   "usernames": [
     {
+      "status": "active",
+      "consecutiveFails": 0,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
       "username": "sysuthar63542026",
+      "lastRunAt": null,
+      "lastReason": null
+    },
+    {
+      "username": "fr.ee.de.wa.s.h.wortha",
       "status": "active",
       "consecutiveFails": 0,
       "cyclesCompleted": 0,
@@ -102,5 +111,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T16:31:25.833Z"
+  "updatedAt": "2026-08-17T16:32:49.941Z"
 }
