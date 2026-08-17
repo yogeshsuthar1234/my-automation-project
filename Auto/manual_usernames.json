@@ -3,7 +3,16 @@
   "nextIndex": 0,
   "usernames": [
     {
+      "status": "active",
+      "consecutiveFails": 0,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
       "username": "hareshwiidv",
+      "lastRunAt": null,
+      "lastReason": null
+    },
+    {
+      "username": "hare.shwiidv",
       "status": "active",
       "consecutiveFails": 0,
       "cyclesCompleted": 0,
@@ -62,5 +71,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T06:50:06.882Z"
+  "updatedAt": "2026-08-17T06:59:25.966Z"
 }
