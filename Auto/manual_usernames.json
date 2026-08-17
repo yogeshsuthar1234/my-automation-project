@@ -10,24 +10,6 @@
       "username": "hareshwiidv",
       "lastRunAt": null,
       "lastReason": null
-    },
-    {
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "username": "hare.shwiidv",
-      "lastRunAt": null,
-      "lastReason": null
-    },
-    {
-      "username": "jask.irat8547",
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
     }
   ],
   "removed": [
@@ -80,5 +62,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T08:25:40.919Z"
+  "updatedAt": "2026-08-17T09:09:00.712Z"
 }
