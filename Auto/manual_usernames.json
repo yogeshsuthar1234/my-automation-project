@@ -1,17 +1,7 @@
 {
   "password": "y@70164",
   "nextIndex": 0,
-  "usernames": [
-    {
-      "username": "urbaneye711",
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
-    }
-  ],
+  "usernames": [],
   "removed": [
     {
       "username": "urbaneye712026",
@@ -52,7 +42,15 @@
       "cyclesCompleted": 0,
       "totalTaskSuccesses": 57,
       "lastReason": "account_suspended"
+    },
+    {
+      "username": "urbaneye711",
+      "removedAt": "2026-08-17T06:16:45.737Z",
+      "reason": "consecutive_failed_cycles_7",
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
+      "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T06:12:32.368Z"
+  "updatedAt": "2026-08-17T06:16:45.737Z"
 }
