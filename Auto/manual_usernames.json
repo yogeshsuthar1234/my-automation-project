@@ -1,26 +1,7 @@
 {
   "password": "y@70164",
   "nextIndex": 0,
-  "usernames": [
-    {
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "username": "sysuthar63542026",
-      "lastRunAt": null,
-      "lastReason": null
-    },
-    {
-      "username": "f.r.ee.dewa.sh.w.ortha",
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
-    }
-  ],
+  "usernames": [],
   "removed": [
     {
       "username": "urbaneye712026",
@@ -109,7 +90,23 @@
       "cyclesCompleted": 0,
       "totalTaskSuccesses": 18,
       "lastReason": "account_suspended"
+    },
+    {
+      "username": "sysuthar63542026",
+      "removedAt": "2026-08-17T16:59:26.316Z",
+      "reason": "consecutive_failed_cycles_7",
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
+      "lastReason": "account_suspended"
+    },
+    {
+      "username": "f.r.ee.dewa.sh.w.ortha",
+      "removedAt": "2026-08-17T16:59:54.096Z",
+      "reason": "consecutive_failed_cycles_7",
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 4,
+      "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T16:33:31.547Z"
+  "updatedAt": "2026-08-17T16:59:54.097Z"
 }
