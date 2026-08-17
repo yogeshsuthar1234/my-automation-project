@@ -1,7 +1,17 @@
 {
   "password": "y@70164",
   "nextIndex": 0,
-  "usernames": [],
+  "usernames": [
+    {
+      "username": "halku19757",
+      "status": "active",
+      "consecutiveFails": 0,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
+      "lastRunAt": null,
+      "lastReason": null
+    }
+  ],
   "removed": [
     {
       "username": "urbaneye712026",
@@ -76,5 +86,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T15:05:43.694Z"
+  "updatedAt": "2026-08-17T15:06:20.623Z"
 }
