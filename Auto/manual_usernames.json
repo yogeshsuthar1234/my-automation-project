@@ -1,7 +1,17 @@
 {
   "password": "y@70164",
   "nextIndex": 0,
-  "usernames": [],
+  "usernames": [
+    {
+      "username": "hareshwiidv",
+      "status": "active",
+      "consecutiveFails": 0,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
+      "lastRunAt": null,
+      "lastReason": null
+    }
+  ],
   "removed": [
     {
       "username": "urbaneye712026",
@@ -52,5 +62,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T06:16:45.737Z"
+  "updatedAt": "2026-08-17T06:50:06.882Z"
 }
