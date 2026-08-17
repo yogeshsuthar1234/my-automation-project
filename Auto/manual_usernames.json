@@ -1,26 +1,7 @@
 {
   "password": "y@70164",
   "nextIndex": 0,
-  "usernames": [
-    {
-      "username": "omprakashsuthar95502026",
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
-    },
-    {
-      "username": "omprakashsuthar95506",
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
-    }
-  ],
+  "usernames": [],
   "removed": [
     {
       "username": "urbaneye712026",
@@ -125,7 +106,23 @@
       "cyclesCompleted": 0,
       "totalTaskSuccesses": 4,
       "lastReason": "account_suspended"
+    },
+    {
+      "username": "omprakashsuthar95502026",
+      "removedAt": "2026-08-17T19:40:40.429Z",
+      "reason": "consecutive_failed_cycles_7",
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
+      "lastReason": "account_suspended"
+    },
+    {
+      "username": "omprakashsuthar95506",
+      "removedAt": "2026-08-17T19:40:53.182Z",
+      "reason": "consecutive_failed_cycles_7",
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 10,
+      "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-17T18:00:51.268Z"
+  "updatedAt": "2026-08-17T19:40:53.182Z"
 }
