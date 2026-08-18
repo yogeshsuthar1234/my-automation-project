@@ -1,7 +1,17 @@
 {
   "password": "y@70164",
   "nextIndex": 0,
-  "usernames": [],
+  "usernames": [
+    {
+      "username": "khozang2026",
+      "status": "active",
+      "consecutiveFails": 0,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
+      "lastRunAt": null,
+      "lastReason": null
+    }
+  ],
   "removed": [
     {
       "username": "urbaneye712026",
@@ -140,5 +150,5 @@
       "lastReason": "otp_required"
     }
   ],
-  "updatedAt": "2026-08-18T08:24:21.990Z"
+  "updatedAt": "2026-08-18T08:29:15.181Z"
 }
