@@ -1,19 +1,7 @@
 {
   "password": "y@70164",
-  "nextIndex": 1,
-  "usernames": [
-    {
-      "username": "khozang3",
-      "status": "active",
-      "consecutiveFails": 6,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 2,
-      "lastRunAt": "2026-08-18T12:07:02.898Z",
-      "lastSuccessAt": null,
-      "lastFailureAt": "2026-08-18T12:07:02.898Z",
-      "lastReason": "otp_required"
-    }
-  ],
+  "nextIndex": 0,
+  "usernames": [],
   "removed": [
     {
       "username": "urbaneye712026",
@@ -158,7 +146,15 @@
       "cyclesCompleted": 0,
       "totalTaskSuccesses": 82,
       "lastReason": "login_failed"
+    },
+    {
+      "username": "khozang3",
+      "removedAt": "2026-08-18T13:10:35.765Z",
+      "reason": "consecutive_failed_cycles_7",
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 2,
+      "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-18T12:32:55.824Z"
+  "updatedAt": "2026-08-18T13:10:35.765Z"
 }
