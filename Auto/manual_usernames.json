@@ -3,22 +3,26 @@
   "nextIndex": 0,
   "usernames": [
     {
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
       "username": "khozang2026",
-      "lastRunAt": null,
-      "lastReason": null
+      "status": "active",
+      "consecutiveFails": 3,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 34,
+      "lastRunAt": "2026-08-18T09:59:08.022Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-18T09:59:08.022Z",
+      "lastReason": "login_failed"
     },
     {
       "username": "khozang3",
       "status": "active",
-      "consecutiveFails": 0,
+      "consecutiveFails": 3,
       "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
+      "totalTaskSuccesses": 2,
+      "lastRunAt": "2026-08-18T09:59:26.940Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-18T09:59:26.940Z",
+      "lastReason": "otp_required"
     }
   ],
   "removed": [
@@ -159,5 +163,5 @@
       "lastReason": "otp_required"
     }
   ],
-  "updatedAt": "2026-08-18T08:38:35.145Z"
+  "updatedAt": "2026-08-18T09:59:26.940Z"
 }
