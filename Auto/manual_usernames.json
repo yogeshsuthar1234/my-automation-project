@@ -1,17 +1,7 @@
 {
   "password": "y@70164",
   "nextIndex": 0,
-  "usernames": [
-    {
-      "username": "cosmicriver274",
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
-    }
-  ],
+  "usernames": [],
   "removed": [
     {
       "username": "urbaneye712026",
@@ -140,7 +130,15 @@
       "cyclesCompleted": 0,
       "totalTaskSuccesses": 2,
       "lastReason": "account_suspended"
+    },
+    {
+      "username": "cosmicriver274",
+      "removedAt": "2026-08-18T08:24:21.990Z",
+      "reason": "consecutive_failed_cycles_7",
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
+      "lastReason": "otp_required"
     }
   ],
-  "updatedAt": "2026-08-18T08:20:23.203Z"
+  "updatedAt": "2026-08-18T08:24:21.990Z"
 }
