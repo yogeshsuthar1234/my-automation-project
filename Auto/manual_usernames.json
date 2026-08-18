@@ -3,7 +3,16 @@
   "nextIndex": 0,
   "usernames": [
     {
+      "status": "active",
+      "consecutiveFails": 0,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
       "username": "khozang2026",
+      "lastRunAt": null,
+      "lastReason": null
+    },
+    {
+      "username": "khozang3",
       "status": "active",
       "consecutiveFails": 0,
       "cyclesCompleted": 0,
@@ -150,5 +159,5 @@
       "lastReason": "otp_required"
     }
   ],
-  "updatedAt": "2026-08-18T08:29:15.181Z"
+  "updatedAt": "2026-08-18T08:38:35.145Z"
 }
