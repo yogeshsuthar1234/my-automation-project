@@ -1,33 +1,39 @@
 {
   "password": "y@70164",
-  "nextIndex": 0,
+  "nextIndex": 2,
   "usernames": [
     {
       "username": "ys3164332",
       "status": "active",
-      "consecutiveFails": 0,
+      "consecutiveFails": 4,
       "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
+      "totalTaskSuccesses": 7,
+      "lastRunAt": "2026-08-19T12:31:19.402Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-19T12:31:19.402Z",
+      "lastReason": "account_suspended"
     },
     {
       "username": "ys31643322026",
       "status": "active",
-      "consecutiveFails": 0,
+      "consecutiveFails": 4,
       "cyclesCompleted": 0,
       "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
+      "lastRunAt": "2026-08-19T12:31:47.233Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-19T12:31:47.233Z",
+      "lastReason": "account_suspended"
     },
     {
       "username": "urbaneye717",
       "status": "active",
-      "consecutiveFails": 0,
+      "consecutiveFails": 3,
       "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
+      "totalTaskSuccesses": 32,
+      "lastRunAt": "2026-08-19T12:30:51.402Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-19T12:30:51.402Z",
+      "lastReason": "login_failed"
     }
   ],
   "removed": [
@@ -184,5 +190,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-19T10:57:43.453Z"
+  "updatedAt": "2026-08-19T12:31:47.233Z"
 }
