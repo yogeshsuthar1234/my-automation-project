@@ -3,15 +3,6 @@
   "nextIndex": 0,
   "usernames": [
     {
-      "username": "ssygnko77",
-      "status": "active",
-      "consecutiveFails": 0,
-      "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
-    },
-    {
       "username": "ys3164332",
       "status": "active",
       "consecutiveFails": 0,
@@ -193,5 +184,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-19T10:57:36.242Z"
+  "updatedAt": "2026-08-19T10:57:43.453Z"
 }
