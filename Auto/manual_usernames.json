@@ -10,6 +10,15 @@
       "totalTaskSuccesses": 0,
       "lastRunAt": null,
       "lastReason": null
+    },
+    {
+      "username": "fucker2323230909",
+      "status": "active",
+      "consecutiveFails": 0,
+      "cyclesCompleted": 0,
+      "totalTaskSuccesses": 0,
+      "lastRunAt": null,
+      "lastReason": null
     }
   ],
   "removed": [
@@ -190,5 +199,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-20T11:39:35.763Z"
+  "updatedAt": "2026-08-20T11:49:41.753Z"
 }
