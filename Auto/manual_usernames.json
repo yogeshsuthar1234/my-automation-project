@@ -1,42 +1,50 @@
 {
   "password": "y@70164",
-  "nextIndex": 0,
+  "nextIndex": 1,
   "usernames": [
     {
       "username": "yogeshwdv8989",
       "status": "active",
-      "consecutiveFails": 0,
+      "consecutiveFails": 6,
       "cyclesCompleted": 0,
       "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
+      "lastRunAt": "2026-08-20T15:09:52.530Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-20T15:09:52.530Z",
+      "lastReason": "account_suspended"
     },
     {
       "username": "fucker2323230909",
       "status": "active",
-      "consecutiveFails": 0,
+      "consecutiveFails": 5,
       "cyclesCompleted": 0,
       "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
+      "lastRunAt": "2026-08-20T15:05:59.853Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-20T15:05:59.853Z",
+      "lastReason": "login_failed"
     },
     {
       "username": "urbaneye713",
       "status": "active",
-      "consecutiveFails": 0,
+      "consecutiveFails": 5,
       "cyclesCompleted": 0,
-      "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
+      "totalTaskSuccesses": 13,
+      "lastRunAt": "2026-08-20T15:09:11.540Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-20T15:09:11.540Z",
+      "lastReason": "otp_required"
     },
     {
       "username": "hs31643326",
       "status": "active",
-      "consecutiveFails": 0,
+      "consecutiveFails": 5,
       "cyclesCompleted": 0,
       "totalTaskSuccesses": 0,
-      "lastRunAt": null,
-      "lastReason": null
+      "lastRunAt": "2026-08-20T15:09:39.694Z",
+      "lastSuccessAt": null,
+      "lastFailureAt": "2026-08-20T15:09:39.694Z",
+      "lastReason": "account_suspended"
     }
   ],
   "removed": [
@@ -217,5 +225,5 @@
       "lastReason": "account_suspended"
     }
   ],
-  "updatedAt": "2026-08-20T13:25:58.932Z"
+  "updatedAt": "2026-08-20T15:09:52.530Z"
 }
