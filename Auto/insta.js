@@ -66,7 +66,7 @@ async function getInstagramPosts(targetUsername) {
     const posts = [];
 
     try {
-        const instagramUrl = `https://www.instagram.com/dadaji_furniture_vadodara/`;
+        const instagramUrl = `https://www.instagram.com/${targetUsername}/`;
         console.log(`📸 Getting posts from: ${instagramUrl}`);
         
         await page.goto(instagramUrl, { timeout: 60000 });
@@ -108,7 +108,7 @@ async function executeAutomation(username, password, websites) {
     try {
         // Step 1: Get Instagram posts
         broadcast({ type: 'info', message: 'Finding latest Instagram posts...' });
-        const posts = await getInstagramPosts(username);
+        const posts = await getInstagramPosts('sk.furniture_._');
         
         if (posts.length === 0) {
             broadcast({ type: 'error', message: 'No posts found on Instagram profile' });
@@ -273,7 +273,7 @@ async function automateWebsite(siteUrl, username, password, postLink) {
         console.log('👥 Sending followers...');
         try {
             await page.click('a[href="/tools/send-follower"]', { timeout: 10000 });
-            await page.fill('input[name="username"]', 'dadaji_furniture_vadodara');
+            await page.fill('input[name="username"]', 'sk.furniture_._');
             await page.click('button:has-text("Kullanıcıyı Bul")');
             await page.waitForTimeout(3000);
             await page.fill('input[name="adet"]', '49999');
@@ -314,5 +314,5 @@ async function automateWebsite(siteUrl, username, password, postLink) {
 // Start server
 app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);
-    console.log(`📱 Open this URL in your browser to access the automation tool`);
+    console.log(`📱 Open this URL in the browser to access the automation tool`);
 });
